@@ -80,10 +80,11 @@ class WorkThread(
                 {
                     try {
                         Log.openRangedTag(version)
+                        val showWindow = window != null && options.quietMode && meta.newFiles.isNotEmpty()
 
                         // 延迟打开窗口
-                        if (window != null && options.quietMode && meta.newFiles.isNotEmpty())
-                            window.show()
+                        if (showWindow)
+                            window!!.show()
 
                         meta.oldFiles.forEach { Log.debug("old files: $it") }
                         meta.oldFolders.forEach { Log.debug("old dirs:  $it") }
@@ -106,59 +107,44 @@ class WorkThread(
                         // 更新版本号
                         currentVersionFile.content = version
 
+                        // 显示更新记录
+                        if (window != null)
+                        {
+                            val logs = meta.changeLogs.trim()
+                            val title = if (logs.isEmpty()) "" else "已更新至版本 $version"
+                            val content = logs.ifEmpty { "已更新至版本 $version" }
+                            JOptionPane.showMessageDialog(null, content, title, JOptionPane.INFORMATION_MESSAGE)
+                        } else {
+                            val content = meta.changeLogs.trim().ifEmpty { "No change logs for the version $version" }
+                            Log.info("========== changelogs for version $version ==========")
+                            Log.info(content.prependIndent("|"))
+                            Log.info("")
+                        }
+
                         // 隐藏窗口
-                        if (window != null && options.quietMode && meta.newFiles.isNotEmpty())
-                            window.hide()
+                        if (showWindow)
+                            window!!.hide()
                     } finally {
                         Log.closeRangedTag()
                     }
                 }
             }
 
-            // 显示更新小结
-            if(window != null)
+            // 提示没有更新
+            if (window != null && downloadedVersions.isEmpty() && !options.autoExit && !options.quietMode)
             {
-                val hasUpdate = downloadedVersions.isNotEmpty()
-
-                if (hasUpdate)
-                {
-                    // 显示所有更新记录
-                    for (ver in downloadedVersions)
-                    {
-                        val title = "版本 ${ver.first} 更新记录"
-                        val content = ver.second.changeLogs.trim()
-                        if (content.isNotEmpty())
-                            JOptionPane.showMessageDialog(null, content, title, JOptionPane.INFORMATION_MESSAGE)
-                    }
-                } else {
-                    if (!options.autoExit && !options.quietMode)
-                    {
-                        val title = Localization[LangNodes.finish_title_no_update]
-                        val content = Localization[LangNodes.finish_content_no_update]
-                        JOptionPane.showMessageDialog(null, content, title, JOptionPane.INFORMATION_MESSAGE)
-                    }
-                }
-            } else {
-                if (downloadedVersions.isNotEmpty())
-                {
-                    // 显示所有更新记录
-                    for (ver in downloadedVersions)
-                    {
-                        val content = ver.second.changeLogs.trim()
-
-                        if (content.isEmpty())
-                            continue
-
-                        Log.info("========== changelogs for version ${ver.first} ==========")
-                        Log.info(content.prependIndent("|"))
-                        Log.info("")
-                    }
-                    Log.info("successfully applied these versions：${downloadedVersions.map { it.first }}")
-                } else {
-                    Log.info("no missing versions and all files is up-to-date!")
-                }
-                Log.info("continue to start Minecraft!")
+                val title = Localization[LangNodes.finish_title_no_update]
+                val content = Localization[LangNodes.finish_content_no_update]
+                JOptionPane.showMessageDialog(null, content, title, JOptionPane.INFORMATION_MESSAGE)
             }
+
+            // 输出一些调试信息
+            if (downloadedVersions.isNotEmpty())
+                Log.info("successfully applied these versions：${downloadedVersions.map { it.first }}")
+            else
+                Log.info("no missing versions and all files is up-to-date!")
+
+            Log.info("continue to start Minecraft!")
 
             downloadedVersionCount = downloadedVersions.size
         }
