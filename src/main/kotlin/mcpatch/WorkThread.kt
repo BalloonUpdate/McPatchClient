@@ -244,7 +244,7 @@ class WorkThread(
 
                                 // 检查解压后的二进制块
                                 if (HashUtils.sha1(decompressed.toByteArray()) != newFile.newFileHash)
-                                    throw PatchCorruptedException(version, "解压后的二进制数据 (${newFile.path})")
+                                    throw PatchCorruptedException(version, "解压后的二进制数据(${newFile.path})")
 
                                 decompressed.writeTo(finalFile)
                             }
@@ -290,7 +290,7 @@ class WorkThread(
 
                                     // 检查解压后的二进制块
                                     if (HashUtils.sha1(decompressedBlock) != newFile.patchFileHash)
-                                        throw PatchCorruptedException(version, "解压后的二进制数据 (${newFile.path})")
+                                        throw PatchCorruptedException(version, "解压后的二进制数据(${newFile.path})")
 
                                     ByteArrayInputStream(decompressedBlock).use { patchStream ->
                                         BsPatch().bspatch(old, patchStream, tempFile, old.available(), newFile.rawLength.toInt())
@@ -302,7 +302,7 @@ class WorkThread(
 
                             // 检查合并后的文件
                             if (HashUtils.sha1(tempBinFile.file) != newFile.newFileHash)
-                                throw PatchCorruptedException(version, "合并后的文件数据 (${newFile.path})")
+                                throw PatchCorruptedException(version, "合并后的文件数据(${newFile.path})")
                         }
 
                         tempBinFile.copy(file)
