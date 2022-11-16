@@ -1,0 +1,5 @@
+window-title: Mc Patch
+connecting-message: 正在连接到更新服务器
+fetch-metadata: 正在获取资源更新
+finish-title-no-update: ''
+finish-content-no-update: 资源文件暂无更新!
