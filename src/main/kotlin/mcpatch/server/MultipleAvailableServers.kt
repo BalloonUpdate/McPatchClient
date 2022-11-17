@@ -1,10 +1,7 @@
 package mcpatch.server
 
 import mcpatch.data.GlobalOptions
-import mcpatch.exception.ConnectionInterruptedException
-import mcpatch.exception.ConnectionRejectedException
-import mcpatch.exception.ConnectionTimeoutException
-import mcpatch.exception.FailedToParsingException
+import mcpatch.exception.*
 import mcpatch.logging.Log
 import mcpatch.util.File2
 import org.json.JSONArray
@@ -19,14 +16,14 @@ class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
     /**
      * 所有可用服务器
      */
-    private val servers = options.server.mapNotNull { serverString ->
+    private val servers = options.server.map { serverString ->
         if (serverString.startsWith("http"))
             HttpSupport(serverString, options)
         else if (serverString.startsWith("sftp"))
             SFTPSupport(serverString, options)
         else
-            null
-    }
+            throw UnknownServerStringFormatException(serverString)
+    }.also { if (it.isEmpty()) throw NoServerException() }
 
     /**
      * 获取一个JsonObject
@@ -92,15 +89,13 @@ class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
 
     private fun fetchTextInternal(relativePath: String): Pair<String, AbstractServerSource>
     {
-        var ex: Exception? = null
+        var ex: Throwable? = null
 
         for (source in servers)
         {
             ex = try {
                 return Pair(source.fetchText(relativePath), source)
-            } catch (e: ConnectionRejectedException) { e }
-            catch (e: ConnectionInterruptedException) { e }
-            catch (e: ConnectionTimeoutException) { e }
+            } catch (e: Throwable) { e }
 
             if (servers.size > 1)
                 Log.error(ex!!.toString())
@@ -116,16 +111,14 @@ class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
         Long, callback:
         OnDownload
     ): AbstractServerSource {
-        var ex: Exception? = null
+        var ex: Throwable? = null
 
         for (source in servers)
         {
             ex = try {
                 source.downloadFile(relativePath, writeTo, lengthExpected, callback)
                 return source
-            } catch (e: ConnectionRejectedException) { e }
-            catch (e: ConnectionInterruptedException) { e }
-            catch (e: ConnectionTimeoutException) { e }
+            } catch (e: Throwable) { e }
 
             if (servers.size > 1)
                 Log.error(ex!!.toString())
