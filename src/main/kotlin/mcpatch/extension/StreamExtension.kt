@@ -1,12 +1,11 @@
 package mcpatch.extension
 
-import java.io.BufferedInputStream
 import java.io.InputStream
 import java.io.OutputStream
 
 object StreamExtension
 {
-    fun BufferedInputStream.actuallySkip(n: Long)
+    fun InputStream.actuallySkip(n: Long)
     {
         var target = n
         while (target > 0)

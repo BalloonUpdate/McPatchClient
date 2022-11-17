@@ -14,10 +14,10 @@
 #            f0:91:07:33:28:19:c5:2c:ea:e4:a9:2b:41:ce:3d:63是远程主机指纹
 #            192.168.5.132是主机地址，22是端口（端口不能省略） mm是子目录
 #            主机指纹支持以下格式
-#              1. SHA1:2Fo8c/96zv32xc8GZWbOGYOlRak=  （sha1指纹格式）
-#              2. SHA256:oQGbQTujGeNIgh0ONthcEpA/BHxtt3rcYY+NxXTxQjs=  （sha256指纹格式）
-#              3. MD5:d3:5e:40:72:db:08:f1:6d:0c:d7:6d:35:0d:ba:7c:32  （md5十六进制冒号分隔形式）
-#              4. d3:5e:40:72:db:08:f1:6d:0c:d7:6d:35:0d:ba:7c:32  （base64编码过的sha1指纹格式或者sha256指纹格式）
+#              甲. SHA1:2Fo8c/96zv32xc8GZWbOGYOlRak=  （sha1指纹格式）
+#              乙. SHA256:oQGbQTujGeNIgh0ONthcEpA/BHxtt3rcYY+NxXTxQjs=  （sha256指纹格式）
+#              丙. MD5:d3:5e:40:72:db:08:f1:6d:0c:d7:6d:35:0d:ba:7c:32  （md5十六进制冒号分隔形式）
+#              丁. d3:5e:40:72:db:08:f1:6d:0c:d7:6d:35:0d:ba:7c:32  （base64编码过的sha1指纹格式或者sha256指纹格式）
 server: http://127.0.0.1:6600
 
 # 更新完是否自动退出，默认值false（默认不开启此选项）

@@ -1,9 +1,7 @@
 package mcpatch
 
 import com.lee.bsdiff.BsPatch
-import mcpatch.data.GlobalOptions
-import mcpatch.data.ModificationMode
-import mcpatch.data.VersionMetadata
+import mcpatch.data.*
 import mcpatch.exception.InvalidVersionException
 import mcpatch.exception.PatchCorruptedException
 import mcpatch.extension.FileExtension.bufferedInputStream
@@ -23,6 +21,7 @@ import org.apache.tools.bzip2.CBZip2InputStream
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.InputStream
 import javax.swing.JOptionPane
 
 class WorkThread(
@@ -152,6 +151,9 @@ class WorkThread(
 
     /**
      * 下载patch文件
+     * @param meta 版本的元信息
+     * @param version patch对应的版本号
+     * @param servers 可用服务器源
      */
     private fun downloadPatch(meta: VersionMetadata, version: String, servers: MultipleAvailableServers): File2
     {
@@ -197,121 +199,155 @@ class WorkThread(
 
     /**
      * 合并patch文件
+     * @param meta 版本的元信息
+     * @param version patch对应的版本号
+     * @param dir 更新的其实目录
+     * @param patchFile patch文件
      */
     private fun applyPatch(meta: VersionMetadata, version: String, dir: File2, patchFile: File2)
     {
         window?.labelText = "正在应用更新包 $version"
 
         patchFile.file.bufferedInputStream().use { patch ->
-            var pointer = 0L
+            val pointer = ObjectLong(0)
 
+            // 解压到临时文件里
             for (newFile in meta.newFiles)
             {
-                val file = dir + newFile.path
+                val rawFile = dir + newFile.path
+                val tempFile = rawFile.parent + (rawFile.name + ".mc-patch-temporal.bin")
 
-                when (newFile.mode)
+                extractPatch(version, newFile, rawFile, tempFile, patch, pointer)
+            }
+
+            // 应用临时文件
+            for (newFile in meta.newFiles)
+            {
+                val rawFile = dir + newFile.path
+                val tempFile = rawFile.parent + (rawFile.name + ".mc-patch-temporal.bin")
+
+                if (newFile.mode == ModificationMode.Fill || newFile.mode == ModificationMode.Modify || tempFile.exists)
                 {
-                    ModificationMode.Empty -> {
-                        Log.info("Empty: ${newFile.path}")
-
-                        file.delete()
-                        file.create()
-                    }
-
-                    ModificationMode.Fill -> {
-                        Log.info("Fill: ${newFile.path}")
-
-                        window?.progressBarText = newFile.path
-
-                        // 如果本地文件被修改过，就跳过更新
-                        if (file.exists && HashUtils.sha1(file.file) == newFile.newFileHash)
-                            continue
-
-                        file.create()
-                        file.file.bufferedOutputStream().use { finalFile ->
-                            patch.actuallySkip(newFile.blockOffset - pointer)
-
-                            // 拿到解压好的原始数据
-                            ByteArrayOutputStream().use { decompressed ->
-                                val bzip = CBZip2InputStream(patch)
-                                var time = System.currentTimeMillis()
-                                bzip.copyAmountTo(decompressed, 1024 * 1024, newFile.rawLength) { copied, total ->
-                                    if (System.currentTimeMillis() - time < 100)
-                                        return@copyAmountTo
-                                    time = System.currentTimeMillis()
-                                    window?.progressBarValue = ((copied.toFloat() / total.toFloat()) * 1000).toInt()
-                                }
-
-                                // 检查解压后的二进制块
-                                if (HashUtils.sha1(decompressed.toByteArray()) != newFile.newFileHash)
-                                    throw PatchCorruptedException(version, "解压后的二进制数据(${newFile.path})")
-
-                                decompressed.writeTo(finalFile)
-                            }
-
-                            pointer = newFile.blockOffset + newFile.blockLength
-                        }
-                    }
-
-                    ModificationMode.Modify -> {
-                        val notFound = !file.exists
-                        val notMatched = if (notFound) false else HashUtils.sha1(file.file) != newFile.oldFileHash
-
-                        // 文件不存在
-                        val extraMsg = if (notFound) " (skip because the old file not found)" else
-                            if (notMatched) " (skip because hash not matched)" else ""
-
-                        Log.info("Modify: ${newFile.path}$extraMsg")
-
-                        if (extraMsg.isNotEmpty())
-                            break
-
-                        window?.progressBarText = newFile.path
-
-                        val tempBinFile = file.parent + (file.name + ".mc-patch-temporal.bin")
-
-                        // 将修补好的文件输出到临时文件里
-                        file.file.bufferedInputStream().use { old ->
-                            tempBinFile.file.bufferedOutputStream().use { tempFile ->
-                                patch.skip(newFile.blockOffset - pointer)
-
-                                // 拿到解压好的原始数据
-                                ByteArrayOutputStream().use { decompressed ->
-                                    val bzip = CBZip2InputStream(patch)
-                                    var time = System.currentTimeMillis()
-                                    bzip.copyAmountTo(decompressed, 1024 * 1024, newFile.rawLength) { copied, total ->
-                                        if (System.currentTimeMillis() - time < 100)
-                                            return@copyAmountTo
-                                        time = System.currentTimeMillis()
-                                        window?.progressBarValue = ((copied.toFloat() / total.toFloat()) * 1000).toInt()
-                                    }
-
-                                    val decompressedBlock = decompressed.toByteArray()
-
-                                    // 检查解压后的二进制块
-                                    if (HashUtils.sha1(decompressedBlock) != newFile.patchFileHash)
-                                        throw PatchCorruptedException(version, "解压后的二进制数据(${newFile.path})")
-
-                                    ByteArrayInputStream(decompressedBlock).use { patchStream ->
-                                        BsPatch().bspatch(old, patchStream, tempFile, old.available(), newFile.rawLength.toInt())
-                                    }
-                                }
-
-                                pointer = newFile.blockOffset + newFile.blockLength
-                            }
-
-                            // 检查合并后的文件
-                            if (HashUtils.sha1(tempBinFile.file) != newFile.newFileHash)
-                                throw PatchCorruptedException(version, "合并后的文件数据(${newFile.path})")
-                        }
-
-                        tempBinFile.copy(file)
-                        tempBinFile.delete()
-                    }
+                    // 合回最终文件，删除临时文件
+                    tempFile.copy(rawFile)
+                    tempFile.delete()
                 }
             }
         }
 
         patchFile.delete()
+    }
+
+    /**
+     * 解压patch
+     * @param version patch对应的版本号
+     * @param newFile 新文件的元信息
+     * @param rawFile 要被更新的原始文件
+     * @param tempFile 先解压到临时文件里
+     * @param patch patch文件的输入流
+     * @param pointer patch文件的读取指针
+     */
+    fun extractPatch(
+        version: String,
+        newFile: NewFile,
+        rawFile: File2,
+        tempFile: File2,
+        patch: InputStream,
+        pointer: ObjectLong,
+    ) {
+        when (newFile.mode)
+        {
+            ModificationMode.Empty -> {
+                Log.info("Empty: ${newFile.path}")
+
+                rawFile.delete()
+                rawFile.create()
+            }
+
+            ModificationMode.Fill -> {
+                Log.info("Fill: ${newFile.path}")
+
+                window?.progressBarText = newFile.path
+
+                // 如果本地文件已经存在，且hash一致，就跳过更新
+                if (rawFile.exists && HashUtils.sha1(rawFile.file) == newFile.newFileHash)
+                    return
+
+                tempFile.file.bufferedOutputStream().use { temp ->
+                    patch.actuallySkip(newFile.blockOffset - pointer.value)
+
+                    // 拿到解压好的原始数据
+                    ByteArrayOutputStream().use { decompressed ->
+                        val bzip = CBZip2InputStream(patch)
+                        var time = System.currentTimeMillis()
+                        bzip.copyAmountTo(decompressed, 1024 * 1024, newFile.rawLength) { copied, total ->
+                            if (System.currentTimeMillis() - time < 100)
+                                return@copyAmountTo
+                            time = System.currentTimeMillis()
+                            window?.progressBarValue = ((copied.toFloat() / total.toFloat()) * 1000).toInt()
+                        }
+
+                        // 检查解压后的二进制块
+                        if (HashUtils.sha1(decompressed.toByteArray()) != newFile.newFileHash)
+                            throw PatchCorruptedException(version, "解压后的二进制数据(${newFile.path})")
+
+                        decompressed.writeTo(temp)
+                    }
+
+                    pointer.value = newFile.blockOffset + newFile.blockLength
+                }
+            }
+
+            ModificationMode.Modify -> {
+                val notFound = !rawFile.exists
+                val notMatched = if (notFound) false else HashUtils.sha1(rawFile.file) != newFile.oldFileHash
+
+                // 文件不存在
+                val extraMsg = if (notFound) " (skip because the old file not found)" else
+                    if (notMatched) " (skip because hash not matched)" else ""
+
+                Log.info("Modify: ${newFile.path}$extraMsg")
+
+                if (extraMsg.isNotEmpty())
+                    return
+
+                window?.progressBarText = newFile.path
+
+                // 将修补好的文件输出到临时文件里
+                rawFile.file.bufferedInputStream().use { old ->
+                    tempFile.file.bufferedOutputStream().use { temp ->
+                        patch.skip(newFile.blockOffset - pointer.value)
+
+                        // 拿到解压好的原始数据
+                        ByteArrayOutputStream().use { decompressed ->
+                            val bzip = CBZip2InputStream(patch)
+                            var time = System.currentTimeMillis()
+                            bzip.copyAmountTo(decompressed, 1024 * 1024, newFile.rawLength) { copied, total ->
+                                if (System.currentTimeMillis() - time < 100)
+                                    return@copyAmountTo
+                                time = System.currentTimeMillis()
+                                window?.progressBarValue = ((copied.toFloat() / total.toFloat()) * 1000).toInt()
+                            }
+
+                            val decompressedBlock = decompressed.toByteArray()
+
+                            // 检查解压后的二进制块
+                            if (HashUtils.sha1(decompressedBlock) != newFile.patchFileHash)
+                                throw PatchCorruptedException(version, "解压后的二进制数据(${newFile.path})")
+
+                            ByteArrayInputStream(decompressedBlock).use { patchStream ->
+                                BsPatch().bspatch(old, patchStream, temp, old.available(), newFile.rawLength.toInt())
+                            }
+                        }
+
+                        pointer.value = newFile.blockOffset + newFile.blockLength
+                    }
+
+                    // 检查合并后的文件
+                    if (HashUtils.sha1(tempFile.file) != newFile.newFileHash)
+                        throw PatchCorruptedException(version, "合并后的文件数据(${newFile.path})")
+                }
+            }
+        }
     }
 }
