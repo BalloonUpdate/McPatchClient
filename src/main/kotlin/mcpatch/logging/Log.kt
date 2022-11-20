@@ -8,28 +8,35 @@ object Log
 
     val rangedTags = LinkedList<String>()
 
+    @JvmOverloads
     fun debug(message: String, newLine: Boolean = true) = message(LogLevel.DEBUG, "", message, newLine)
 
+    @JvmOverloads
     fun info(message: String, newLine: Boolean = true) = message(LogLevel.INFO, "", message, newLine)
 
+    @JvmOverloads
     fun warn(message: String, newLine: Boolean = true) = message(LogLevel.WARN, "", message, newLine)
 
+    @JvmOverloads
     fun error(message: String, newLine: Boolean = true) = message(LogLevel.ERROR, "", message, newLine)
 
-    fun debug(tag: String, message: String, newLine: Boolean = true) = message(LogLevel.DEBUG, tag, message, newLine)
+    @JvmOverloads
+    fun debug(message: Any, newLine: Boolean = true) = message(LogLevel.DEBUG, "", message.toString(), newLine)
 
-    fun info(tag: String, message: String, newLine: Boolean = true) = message(LogLevel.INFO, tag, message, newLine)
+    @JvmOverloads
+    fun info(message: Any, newLine: Boolean = true) = message(LogLevel.INFO, "", message.toString(), newLine)
 
-    fun warn(tag: String, message: String, newLine: Boolean = true) = message(LogLevel.WARN, tag, message, newLine)
+    @JvmOverloads
+    fun warn(message: Any, newLine: Boolean = true) = message(LogLevel.WARN, "", message.toString(), newLine)
 
-    fun error(tag: String, message: String, newLine: Boolean = true) = message(LogLevel.ERROR, tag, message, newLine)
+    @JvmOverloads
+    fun error(message: Any, newLine: Boolean = true) = message(LogLevel.ERROR, "", message.toString(), newLine)
 
     fun message(level: LogLevel, tag: String, message: String, newLine: Boolean)
     {
         for (h in handlers)
             if(level.ordinal >= h.filter.ordinal)
-                h.onMessage(
-                    Message(
+                h.onMessage(Message(
                     time = System.currentTimeMillis(),
                     level = level,
                     tag = tag,
@@ -37,33 +44,19 @@ object Log
                     newLineIndent = true,
                     rangedTags = rangedTags,
                     newLine = newLine,
-                )
-                )
+                ))
     }
 
-    fun openRangedTag(tag: String)
+    fun openTag(tag: String)
     {
         if (rangedTags.lastOrNull().run { this == null || this != tag })
             rangedTags.addLast(tag)
     }
 
-    fun closeRangedTag()
+    fun closeTag()
     {
         if (rangedTags.isNotEmpty())
             rangedTags.removeLast()
-    }
-
-    fun withRangedTag(tag: String, scope: () -> Unit)
-    {
-        val split = tag.split("/")
-
-        for (s in split)
-            openRangedTag(s)
-
-        scope()
-
-        for (s in split)
-            closeRangedTag()
     }
 
     fun destory()

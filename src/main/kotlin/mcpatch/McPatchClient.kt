@@ -12,7 +12,7 @@ import mcpatch.logging.ConsoleHandler
 import mcpatch.logging.FileHandler
 import mcpatch.logging.Log
 import mcpatch.util.*
-import GUI.SetupSwing
+import com.github.kasuminova.GUI.SetupSwing
 import mcpatch.extension.RuntimeExtension.usedMemory
 import mcpatch.util.DialogUtils
 import org.json.JSONException
@@ -57,7 +57,7 @@ class McPatchClient
                     Log.LogLevel.INFO
             Log.addHandler(ConsoleHandler(Log, consoleLogLevel))
             if (!hasStandaloneProgress)
-                Log.openRangedTag("McPatchClient")
+                Log.openTag("McPatchClient")
 
             // 收集并打印环境信息
             Log.info("RAM: " + MiscUtils.convertBytes(Runtime.getRuntime().usedMemory()))
@@ -126,23 +126,25 @@ class McPatchClient
 
                     if (graphicsMode)
                     {
+                        val appVersion = "${Environment.Version} (${Environment.GitCommit})"
                         val className = if (ex!! !is BaseException) ex!!.javaClass.name + "\n" else ""
                         val errMessage = MiscUtils.stringBreak(className + (ex!!.message ?: "<No Exception Message>"), 80)
-                        val title = "Error occurred ${Environment.Version}"
+                        val title = "发生错误 $appVersion"
                         var content = errMessage + "\n"
                         content += if (!hasStandaloneProgress) "点击\"是\"显示错误详情并崩溃Minecraft，" else "点击\"是\"显示错误详情并退出，"
                         content += if (!hasStandaloneProgress) "点击\"否\"继续启动Minecraft" else "点击\"否\"直接退出程序"
                         val choice = DialogUtils.confirm(title, content)
+
                         if (!hasStandaloneProgress)
                         {
                             if (choice)
                             {
-                                DialogUtils.error("Callstack", ex!!.stackTraceToString())
+                                DialogUtils.error("错误详情 $appVersion", ex!!.stackTraceToString())
                                 throw ex!!
                             }
                         } else {
                             if (choice)
-                                DialogUtils.error("Callstack", ex!!.stackTraceToString())
+                                DialogUtils.error("错误详情 $appVersion", ex!!.stackTraceToString())
                             throw ex!!
                         }
                     } else {

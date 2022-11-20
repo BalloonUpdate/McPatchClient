@@ -78,7 +78,7 @@ class WorkThread(
                 for ((version, meta) in downloadedVersions)
                 {
                     try {
-                        Log.openRangedTag(version)
+                        Log.openTag(version)
                         val showWindow = window != null && options.quietMode && meta.newFiles.isNotEmpty()
 
                         // 延迟打开窗口
@@ -124,7 +124,7 @@ class WorkThread(
                         if (showWindow)
                             window!!.hide()
                     } finally {
-                        Log.closeRangedTag()
+                        Log.closeTag()
                     }
                 }
             }
