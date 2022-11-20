@@ -49,7 +49,7 @@ class McPatchClient
 
             // 初始化日志系统
             if (enableLogFile)
-                Log.addHandler(FileHandler(Log, progDir + (if (graphicsMode) "mc-patch-client.log" else "mc-patch-client.txt")))
+                Log.addHandler(FileHandler(Log, progDir + (if (graphicsMode) "mc-patch.log" else "mc-patch.log.txt")))
 
             val consoleLogLevel = if (Environment.IsProduction)
                     (if (graphicsMode || !enableLogFile) Log.LogLevel.DEBUG else Log.LogLevel.INFO)
