@@ -211,13 +211,16 @@ class WorkThread(
         patchFile.file.bufferedInputStream().use { patch ->
             val pointer = ObjectLong(0)
 
+            val skipped = mutableListOf<String>()
+
             // 解压到临时文件里
             for (newFile in meta.newFiles)
             {
                 val rawFile = dir + newFile.path
                 val tempFile = rawFile.parent + (rawFile.name + ".mc-patch-temporal.bin")
 
-                extractPatch(version, newFile, rawFile, tempFile, patch, pointer)
+                if (extractPatch(version, newFile, rawFile, tempFile, patch, pointer))
+                    skipped.add(newFile.path)
             }
 
             // 应用临时文件
@@ -226,7 +229,8 @@ class WorkThread(
                 val rawFile = dir + newFile.path
                 val tempFile = rawFile.parent + (rawFile.name + ".mc-patch-temporal.bin")
 
-                if (newFile.mode == ModificationMode.Fill || newFile.mode == ModificationMode.Modify || tempFile.exists)
+                if ((newFile.mode == ModificationMode.Fill || newFile.mode == ModificationMode.Modify)
+                    && newFile.path !in skipped)
                 {
                     // 合回最终文件，删除临时文件
                     tempFile.copy(rawFile)
@@ -246,6 +250,7 @@ class WorkThread(
      * @param tempFile 先解压到临时文件里
      * @param patch patch文件的输入流
      * @param pointer patch文件的读取指针
+     * @return 是否跳过了更新
      */
     fun extractPatch(
         version: String,
@@ -254,7 +259,7 @@ class WorkThread(
         tempFile: File2,
         patch: InputStream,
         pointer: ObjectLong,
-    ) {
+    ): Boolean {
         when (newFile.mode)
         {
             ModificationMode.Empty -> {
@@ -271,7 +276,7 @@ class WorkThread(
 
                 // 如果本地文件已经存在，且hash一致，就跳过更新
                 if (rawFile.exists && HashUtils.sha1(rawFile.file) == newFile.newFileHash)
-                    return
+                    return true
 
                 tempFile.file.bufferedOutputStream().use { temp ->
                     patch.actuallySkip(newFile.blockOffset - pointer.value)
@@ -309,7 +314,7 @@ class WorkThread(
                 Log.info("Modify: ${newFile.path}$extraMsg")
 
                 if (extraMsg.isNotEmpty())
-                    return
+                    return true
 
                 window?.progressBarText = newFile.path
 
@@ -349,5 +354,7 @@ class WorkThread(
                 }
             }
         }
+
+        return false
     }
 }
