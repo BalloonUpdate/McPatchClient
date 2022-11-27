@@ -219,6 +219,8 @@ class WorkThread(
                 val rawFile = dir + newFile.path
                 val tempFile = rawFile.parent + (rawFile.name + ".mc-patch-temporal.bin")
 
+                rawFile.parent.mkdirs()
+
                 if (extractPatch(version, newFile, rawFile, tempFile, patch, pointer))
                     skipped.add(newFile.path)
             }
