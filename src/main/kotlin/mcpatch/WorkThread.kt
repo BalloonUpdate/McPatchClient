@@ -13,10 +13,7 @@ import mcpatch.localization.LangNodes
 import mcpatch.localization.Localization
 import mcpatch.logging.Log
 import mcpatch.server.MultipleAvailableServers
-import mcpatch.util.File2
-import mcpatch.util.HashUtils
-import mcpatch.util.MiscUtils
-import mcpatch.util.SpeedSampler
+import mcpatch.util.*
 import org.apache.tools.bzip2.CBZip2InputStream
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -187,11 +184,19 @@ class WorkThread(
         Log.debug("calculating the hash of the patch file")
 
         // 校验patch文件
-        window?.labelText = "正在校验资源更新包"
+        window?.labelText = "正在校验资源更新包 $version"
         window?.progressBarValue = 0
         window?.progressBarText = ""
 
-        if (tempFile.length != meta.patchLength || HashUtils.sha1(tempFile.file) != meta.patchHash)
+        fun onProgress(current: Long, total: Long)
+        {
+            window?.progressBarText = "${MiscUtils.convertBytes(current)} / ${MiscUtils.convertBytes(total)}"
+            window?.progressBarValue = (current * 1000 / total).toInt()
+        }
+
+        val corrupted = tempFile.length != meta.patchLength
+                || HashUtils.sha1(tempFile.file) { current, total -> onProgress(current, total) } != meta.patchHash
+        if (corrupted)
             throw PatchCorruptedException(version, "二进制数据")
 
         return tempFile
@@ -206,10 +211,13 @@ class WorkThread(
      */
     private fun applyPatch(meta: VersionMetadata, version: String, dir: File2, patchFile: File2)
     {
+        val timer = IntervalTimer(150)
+
         window?.labelText = "正在应用更新包 $version"
 
         patchFile.file.bufferedInputStream().use { patch ->
             val pointer = ObjectLong(0)
+            val uiUpdatingTimer = IntervalTimer(150)
 
             val skipped = mutableListOf<String>()
 
@@ -221,12 +229,14 @@ class WorkThread(
 
                 rawFile.parent.mkdirs()
 
-                if (extractPatch(version, newFile, rawFile, tempFile, patch, pointer))
+                if (extractPatch(version, newFile, rawFile, tempFile, patch, pointer, uiUpdatingTimer))
                     skipped.add(newFile.path)
             }
 
             // 应用临时文件
-            for (newFile in meta.newFiles)
+            window?.labelText = "正在进行收尾工作"
+
+            for ((index, newFile) in meta.newFiles.withIndex())
             {
                 val rawFile = dir + newFile.path
                 val tempFile = rawFile.parent + (rawFile.name + ".mc-patch-temporal.bin")
@@ -237,6 +247,12 @@ class WorkThread(
                     // 合回最终文件，删除临时文件
                     tempFile.copy(rawFile)
                     tempFile.delete()
+                }
+
+                if (timer.timeout)
+                {
+                    window?.progressBarText = "$index/${meta.newFiles.size}"
+                    window?.progressBarValue = index * 1000 / meta.newFiles.size
                 }
             }
         }
@@ -252,6 +268,7 @@ class WorkThread(
      * @param tempFile 先解压到临时文件里
      * @param patch patch文件的输入流
      * @param pointer patch文件的读取指针
+     * @param uiUpdatingTimer UI更新计时器
      * @return 是否跳过了更新
      */
     fun extractPatch(
@@ -261,6 +278,7 @@ class WorkThread(
         tempFile: File2,
         patch: InputStream,
         pointer: ObjectLong,
+        uiUpdatingTimer: IntervalTimer,
     ): Boolean {
         when (newFile.mode)
         {
@@ -274,7 +292,9 @@ class WorkThread(
             ModificationMode.Fill -> {
                 Log.info("Fill: ${newFile.path}")
 
-                window?.progressBarText = newFile.path
+                // 添加UI更新间隔
+                if (window != null && uiUpdatingTimer.timeout)
+                    window.progressBarText = newFile.path
 
                 // 如果本地文件已经存在，且hash一致，就跳过更新
                 if (rawFile.exists && HashUtils.sha1(rawFile.file) == newFile.newFileHash)
@@ -286,7 +306,7 @@ class WorkThread(
                     // 拿到解压好的原始数据
                     ByteArrayOutputStream().use { decompressed ->
                         val bzip = CBZip2InputStream(patch)
-                        var time = System.currentTimeMillis()
+                        var time = System.currentTimeMillis() + 300 // 300ms后再开始更新
                         bzip.copyAmountTo(decompressed, 1024 * 1024, newFile.rawLength) { copied, total ->
                             if (System.currentTimeMillis() - time < 100)
                                 return@copyAmountTo
@@ -318,7 +338,9 @@ class WorkThread(
                 if (extraMsg.isNotEmpty())
                     return true
 
-                window?.progressBarText = newFile.path
+                // 添加UI更新间隔
+                if (window != null && uiUpdatingTimer.timeout)
+                    window.progressBarText = newFile.path
 
                 // 将修补好的文件输出到临时文件里
                 rawFile.file.bufferedInputStream().use { old ->
@@ -328,7 +350,7 @@ class WorkThread(
                         // 拿到解压好的原始数据
                         ByteArrayOutputStream().use { decompressed ->
                             val bzip = CBZip2InputStream(patch)
-                            var time = System.currentTimeMillis()
+                            var time = System.currentTimeMillis() + 300 // 300ms后再开始更新
                             bzip.copyAmountTo(decompressed, 1024 * 1024, newFile.rawLength) { copied, total ->
                                 if (System.currentTimeMillis() - time < 100)
                                     return@copyAmountTo

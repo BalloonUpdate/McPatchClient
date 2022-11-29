@@ -45,17 +45,20 @@ object HashUtils
      * @param file 要计算的文件
      * @return 文件的sha1十六进制小写字符串
      */
-    fun sha1(file: File): String
+    fun sha1(file: File, onProgress: ((current: Long, total: Long) -> Unit)? = null): String
     {
         val sha1 = MessageDigest.getInstance("sha1")
 
         FileChannel.open(Paths.get(file.toURI()), StandardOpenOption.READ).use { channel ->
-            val buffer = ByteBuffer.allocate(chooseBufferSize(file.length()))
+            val fileLen = file.length()
+            val buffer = ByteBuffer.allocate(chooseBufferSize(fileLen))
             var len: Int
-            while (channel.read(buffer).also { len = it } > 0)
+            var totalBytes = 0L
+            while (channel.read(buffer).also { len = it; totalBytes += it } > 0)
             {
                 sha1.update(buffer.array(), 0, len)
                 buffer.clear()
+                onProgress?.invoke(totalBytes, fileLen)
             }
             channel.close()
         }
