@@ -55,7 +55,7 @@ no-throwing: false
 # http-write-timeout: 3000
 
 # 出现网络问题时的重试次数（仅对http源有效）
-# retry-times: 3
+# retry-times: 5
 
 #   sftp源例子： （一般情况下不建议使用sftp更新源，如果处理不好可能会有服务器安全隐患）
 #     1. sftp://user:pass:f0:91:07:33:28:19:c5:2c:ea:e4:a9:2b:41:ce:3d:63@192.168.5.133:22/  （默认形式，工作目录本身）

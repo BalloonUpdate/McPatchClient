@@ -83,7 +83,7 @@ data class GlobalOptions(
                 httpReadTimeout = getOption<Int>(map, "http-read-timeout") ?: 5000,
                 httpWriteTimeout = getOption<Int>(map, "http-write-timeout") ?: 3000,
                 disableTheme = getOption<Boolean>(map, "disable-theme") ?: true,
-                retryTimes = getOption<Int>(map, "retry-times") ?: 3,
+                retryTimes = getOption<Int>(map, "retry-times") ?: 5,
             )
         }
 
