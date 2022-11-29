@@ -177,7 +177,7 @@ class WorkThread(
             val progressText = String.format("%.1f", progress)
             val currentBytes = MiscUtils.convertBytes(bytesReceived)
             val totalBytes = MiscUtils.convertBytes(lengthExpected)
-            val speedText = MiscUtils.convertBytes(sampler.speed())
+            val speedText = MiscUtils.convertBytes(sampler.speed)
 
             window.labelText = "正在下载资源更新包 $version"
             window.progressBarText = "$progressText%  -  $currentBytes/$totalBytes   -   $speedText/s"

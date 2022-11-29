@@ -41,7 +41,6 @@ object MiscUtils
      * @param size 文件大小
      * @return 缓冲区大小
      */
-//    @Suppress("NOTHING_TO_INLINE")
     fun chooseBufferSize(size: Long): Int {
         val kb = 1024
         val mb = 1024 * 1024
@@ -61,4 +60,26 @@ object MiscUtils
             else -> 64 * mb
         }
     }
+
+    /**
+     * 根据文件大小选择合适的下载进度报告大小
+     * @param size 文件大小
+     * @return 报告大小
+     */
+    fun chooseReportSize(size: Long): Int {
+        val kb = 1024
+        val mb = 1024 * 1024
+        val gb = 1024 * 1024 * 1024
+        return when {
+            size < 32 * kb  -> 8 * kb
+            size < 128 * kb -> 16 * kb
+            size < 256 * kb -> 32 * kb
+            size < 512 * kb -> 64 * kb
+            size < 4 * mb   -> 128 * kb
+            size < 16 * mb   -> 256 * kb
+            size < 64 * mb   -> 512 * kb
+            else -> 1 * mb
+        }
+    }
+
 }

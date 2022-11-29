@@ -8,9 +8,13 @@ import java.util.LinkedList
  */
 class SpeedSampler(val samplingPeriod: Int)
 {
-    private val samplingFrames = LinkedList<Pair<Long, Long>>()
+    private var startTimestamp = 0L
+    private val samplingFrames = LinkedList<Long>()
 
-    private var speed: Long = 0
+    /**
+     * 获取当前速度，单位字节
+     */
+    var speed: Long = 0
 
     /**
      * 进行采样
@@ -18,26 +22,29 @@ class SpeedSampler(val samplingPeriod: Int)
      */
     fun feed(bytes: Long)
     {
-        val now = System.currentTimeMillis()
+        val now = getNow()
 
-        synchronized(samplingFrames)
-        {
-            samplingFrames.addLast(Pair(System.currentTimeMillis(), bytes))
-            samplingFrames.removeIf { frame -> (now - frame.first) > samplingPeriod }
+        samplingFrames.addLast((now.toLong() shl 32) + bytes)
+        samplingFrames.removeIf { (now - it.high32) > samplingPeriod }
 
-            val firstTime = samplingFrames.first.first
-            val timeSpan = now - firstTime
+        val firstTime = samplingFrames.first.high32
+        val timeSpan = now - firstTime
 
-            if (timeSpan > 0)
-                speed = samplingFrames.sumOf { frame -> frame.second } / timeSpan * 1000
-        }
+        if (timeSpan > 0)
+            speed = (samplingFrames.sumOf { it.low32 } / timeSpan * 1000).toLong()
     }
 
-    /**
-     * 获取当前速度，单位字节
-     */
-    fun speed(): Long
+    private fun getNow(): Int
     {
-        return speed
+        val ts = System.currentTimeMillis()
+
+        if (startTimestamp == 0L)
+            startTimestamp = ts
+
+        return (ts - startTimestamp).toInt()
     }
+
+    private inline val Long.high32: Int get() = ((this shr 32) and 0xffffffff).toInt()
+
+    private inline val Long.low32: Int get() = (this and 0xffffffff).toInt()
 }

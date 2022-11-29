@@ -7,8 +7,12 @@ import mcpatch.logging.HttpResponseStatusCodeException
 import mcpatch.logging.Log
 import mcpatch.util.File2
 import mcpatch.util.MiscUtils
+import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okio.Okio
+import java.io.BufferedInputStream
+import java.io.ByteArrayOutputStream
 import java.net.ConnectException
 import java.net.SocketException
 import java.net.SocketTimeoutException
@@ -86,16 +90,30 @@ class HttpSupport(serverString: String, options: GlobalOptions) : AbstractServer
                     if(!r.isSuccessful)
                         throw HttpResponseStatusCodeException(r.code, link, r.body?.string())
 
-                    r.body!!.byteStream().use { input ->
-                        writeTo.file.bufferedOutputStream(1024 * 1024).use { output ->
+                    val body = r.body!!
+                    val bodyLen = if (body.contentLength() != -1L) body.contentLength() else lengthExpected
+                    val bufferSize = MiscUtils.chooseBufferSize(bodyLen)
+
+                    body.source().use { input ->
+                        writeTo.file.bufferedOutputStream(bufferSize).use { output ->
                             var bytesReceived: Long = 0
                             var len: Int
-                            val buffer = ByteArray(MiscUtils.chooseBufferSize(lengthExpected))
+                            val buffer = ByteArray(bufferSize)
+
+                            // 尽量减少报告下载进度的次数，太频繁报告会影响性能
+                            val bulklyReportSize = MiscUtils.chooseReportSize(bodyLen)
+                            var bulklyReport = 0
 
                             while (input.read(buffer).also { len = it; bytesReceived += it } != -1)
                             {
                                 output.write(buffer, 0, len)
-                                callback(len.toLong(), bytesReceived, lengthExpected)
+
+                                bulklyReport += len
+                                if (bulklyReport > bulklyReportSize)
+                                {
+                                    callback(bulklyReport.toLong(), bytesReceived, bodyLen)
+                                    bulklyReport = 0
+                                }
                             }
                         }
                     }
