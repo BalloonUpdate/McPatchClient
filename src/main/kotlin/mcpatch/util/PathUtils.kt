@@ -21,4 +21,14 @@ object PathUtils
      */
     fun getFileNamePart(path: String): String = path.lastIndexOf("/")
         .run { if (this == -1) path else path.substring(this + 1) }
+
+    /**
+     * 获取文件名中的后缀部分
+     *
+     * a.b返回a
+     * @param filename 文件名
+     * @return 文件名的后缀部分
+     */
+    fun getFileSuffix(filename: String): String = filename.lastIndexOf(".")
+        .run { if (this == -1) filename else filename.substring(0, this) }
 }

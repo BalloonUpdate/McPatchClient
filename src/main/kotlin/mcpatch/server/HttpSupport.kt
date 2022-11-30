@@ -7,12 +7,8 @@ import mcpatch.logging.HttpResponseStatusCodeException
 import mcpatch.logging.Log
 import mcpatch.util.File2
 import mcpatch.util.MiscUtils
-import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okio.Okio
-import java.io.BufferedInputStream
-import java.io.ByteArrayOutputStream
 import java.net.ConnectException
 import java.net.SocketException
 import java.net.SocketTimeoutException
@@ -71,7 +67,7 @@ class HttpSupport(serverString: String, options: GlobalOptions) : AbstractServer
         throw ex!!
     }
 
-    override fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long, callback: OnDownload)
+    override fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long?, callback: OnDownload)
     {
         val url = buildURI(relativePath)
         Log.debug("http request on $url, write to: ${writeTo.path}")
@@ -92,11 +88,11 @@ class HttpSupport(serverString: String, options: GlobalOptions) : AbstractServer
 
                     val body = r.body!!
                     val bodyLen = if (body.contentLength() != -1L) body.contentLength() else lengthExpected
-                    val bufferSize = MiscUtils.chooseBufferSize(bodyLen)
+                    val bufferSize = MiscUtils.chooseBufferSize(bodyLen, 128 * 1024)
 
                     body.source().use { input ->
                         writeTo.file.bufferedOutputStream(bufferSize).use { output ->
-                            var bytesReceived: Long = 0
+                            var received: Long = 0
                             var len: Int
                             val buffer = ByteArray(bufferSize)
 
@@ -104,14 +100,14 @@ class HttpSupport(serverString: String, options: GlobalOptions) : AbstractServer
                             val bulklyReportSize = MiscUtils.chooseReportSize(bodyLen)
                             var bulklyReport = 0
 
-                            while (input.read(buffer).also { len = it; bytesReceived += it } != -1)
+                            while (input.read(buffer).also { len = it; received += it } != -1)
                             {
                                 output.write(buffer, 0, len)
 
                                 bulklyReport += len
                                 if (bulklyReport > bulklyReportSize)
                                 {
-                                    callback(bulklyReport.toLong(), bytesReceived, bodyLen)
+                                    callback(bulklyReport.toLong(), received, bodyLen)
                                     bulklyReport = 0
                                 }
                             }

@@ -121,7 +121,7 @@ class SFTPSupport(
         throw ex!!
     }
 
-    override fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long, callback: OnDownload)
+    override fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long?, callback: OnDownload)
     {
         checkOpen()
         Log.info("sftp reqeust on ${buildURI(relativePath)}")
@@ -134,14 +134,14 @@ class SFTPSupport(
                 sftp!!.open(compositePath(relativePath)).use { file ->
                     file.RemoteFileInputStream().use { remote ->
                         writeTo.file.bufferedOutputStream(1024 * 1024).use { output ->
-                            var bytesReceived: Long = 0
+                            var received: Long = 0
                             var len: Int
                             val buffer = ByteArray(MiscUtils.chooseBufferSize(lengthExpected))
 
-                            while (remote.read(buffer).also { len = it; bytesReceived += it } != -1)
+                            while (remote.read(buffer).also { len = it; received += it } != -1)
                             {
                                 output.write(buffer, 0, len)
-                                callback(len.toLong(), bytesReceived, lengthExpected)
+                                callback(len.toLong(), received, lengthExpected)
                             }
                         }
                     }

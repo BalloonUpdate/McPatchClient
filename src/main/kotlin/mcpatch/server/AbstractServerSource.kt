@@ -5,7 +5,7 @@ import mcpatch.exception.ConnectionRejectedException
 import mcpatch.exception.ConnectionTimeoutException
 import mcpatch.util.File2
 
-typealias OnDownload = (packageLength: Long, bytesReceived: Long, lengthExpected: Long) -> Unit
+typealias OnDownload = (block: Long, received: Long, total: Long?) -> Unit
 
 interface AbstractServerSource : AutoCloseable
 {
@@ -29,7 +29,7 @@ interface AbstractServerSource : AutoCloseable
      * @throws ConnectionInterruptedException 当连接意外断开时
      * @throws ConnectionTimeoutException 当发生超时时
      */
-    fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long, callback: OnDownload)
+    fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long?, callback: OnDownload)
 
     /**
      * 构建一个URI

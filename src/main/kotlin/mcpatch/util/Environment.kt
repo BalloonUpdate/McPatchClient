@@ -30,16 +30,16 @@ object Environment
      * 获取当前Jar文件的打包路径，如果是开发环境则返回null
      */
     @JvmStatic
-    val JarFile: File2? by lazy {
+    val JarFile: File2? get() {
         val isPackaged = javaClass.getResource("")?.protocol != "file"
 
         if (!isPackaged)
-            return@lazy null
+            return null
 
         val url = URLDecoder.decode(javaClass.protectionDomain.codeSource.location.file, "UTF-8")
             .replace("\\", "/")
 
-        return@lazy File2(if (url.endsWith(".class") && "!" in url) {
+        return File2(if (url.endsWith(".class") && "!" in url) {
             val path = url.substring(0, url.lastIndexOf("!"))
             if ("file:/" in path) path.substring(path.indexOf("file:/") + "file:/".length) else path
         } else url)

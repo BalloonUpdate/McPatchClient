@@ -12,6 +12,11 @@ data class GlobalOptions(
     val server: List<String>,
 
     /**
+     * 客户端热更新的版本号文件文件的相对路径
+     */
+    val hotupdate: String,
+
+    /**
      * 更新完成后是否自动关闭窗口并退出程序
      */
     val autoExit: Boolean,
@@ -74,6 +79,7 @@ data class GlobalOptions(
 
             return GlobalOptions(
                 server = server,
+                hotupdate = getOption<String>(map, "hotupdate") ?: "",
                 autoExit = getOption<Boolean>(map, "auto-exit") ?: false,
                 verionFile = getOption<String>(map, "version-file") ?: "mc-patch-version.txt",
                 basePath = getOption<String>(map, "base-path") ?: "",

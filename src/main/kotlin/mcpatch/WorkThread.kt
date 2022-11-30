@@ -2,6 +2,7 @@ package mcpatch
 
 import com.lee.bsdiff.BsPatch
 import mcpatch.data.*
+import mcpatch.exception.HotUpdateSignalException
 import mcpatch.exception.InvalidVersionException
 import mcpatch.exception.PatchCorruptedException
 import mcpatch.extension.FileExtension.bufferedInputStream
@@ -26,6 +27,7 @@ class WorkThread(
     val options: GlobalOptions,
     val updateDir: File2,
     val progDir: File2,
+    val hotupdate: File2,
 ): Thread() {
     var downloadedVersionCount = 0
 
@@ -38,6 +40,10 @@ class WorkThread(
             window?.show()
 
         MultipleAvailableServers(options).use { servers ->
+            // 检查热更新
+            if (options.hotupdate.isNotEmpty())
+                doHotUpdate(servers)
+
             val currentVersionFile = progDir + options.verionFile
 
             val allVersions = servers.fetchText("mc-patch-versions.txt").split("\n").filter { it.isNotEmpty() }
@@ -147,6 +153,44 @@ class WorkThread(
     }
 
     /**
+     * 检查热更新
+     * @param servers 服务器源
+     */
+    private fun doHotUpdate(servers: MultipleAvailableServers)
+    {
+        val newestClientVersion = servers.fetchText(options.hotupdate)
+        val versionReported = (Regex("\\d+\\.\\d+\\.\\d+").find(newestClientVersion)
+            ?: throw RuntimeException("服务端报告的客户端可执行文件热更新最新文件名格式中不包含语义化版本号字符串，无法断定是否应该更新")).value
+
+        Log.info("local version: ${Environment.Version}, remote version: $versionReported")
+
+        if (versionReported != Environment.Version)
+        {
+            if (!Environment.IsProduction)
+            {
+                if (!DialogUtils.confirm("正处于开发环境", "服务端报告了最新的热更新版本为 $versionReported，是否进行更新？"))
+                {
+                    Log.info("the developer indicates to skip this hot updating")
+                    return
+                }
+            }
+
+            Log.info("start to update")
+
+            // 延迟打开窗口
+            if (window != null && options.quietMode)
+                window.show()
+
+            window?.labelText = "正在升级到新版本"
+
+            val hotupdateTemporary = hotupdate.parent + (hotupdate.name + ".temp")
+            val filename = PathUtils.getDirPathPart(options.hotupdate) + "/" + newestClientVersion
+            downloadWithProgress(servers, filename, hotupdateTemporary, null)
+            throw HotUpdateSignalException(hotupdateTemporary.file)
+        }
+    }
+
+    /**
      * 下载patch文件
      * @param meta 版本的元信息
      * @param version patch对应的版本号
@@ -156,30 +200,9 @@ class WorkThread(
     {
         val tempFile = File2(File.createTempFile("mc-patch-$version", ".bin"))
 
-        val sampler = SpeedSampler(3000)
-        var time = System.currentTimeMillis()
+        window?.labelText = "正在下载资源更新包 $version"
 
-        servers.downloadFile("$version.mc-patch.bin", tempFile, meta.patchLength) { packageLength, bytesReceived, lengthExpected ->
-            if (window == null)
-                return@downloadFile
-
-            sampler.feed(packageLength)
-
-            // 每隔500年更新一次ui
-            if (System.currentTimeMillis() - time < 200)
-                return@downloadFile
-            time = System.currentTimeMillis()
-
-            val progress = bytesReceived / lengthExpected.toFloat() * 100
-            val progressText = String.format("%.1f", progress)
-            val currentBytes = MiscUtils.convertBytes(bytesReceived)
-            val totalBytes = MiscUtils.convertBytes(lengthExpected)
-            val speedText = MiscUtils.convertBytes(sampler.speed)
-
-            window.labelText = "正在下载资源更新包 $version"
-            window.progressBarText = "$progressText%  -  $currentBytes/$totalBytes   -   $speedText/s"
-            window.progressBarValue = (progress * 10).toInt()
-        }
+        downloadWithProgress(servers, "$version.mc-patch.bin", tempFile, meta.patchLength)
 
         Log.debug("calculating the hash of the patch file")
 
@@ -245,6 +268,7 @@ class WorkThread(
                     && newFile.path !in skipped)
                 {
                     // 合回最终文件，删除临时文件
+                    Log.debug("apply to final file: ${newFile.path} from ${tempFile.path}")
                     tempFile.copy(rawFile)
                     tempFile.delete()
                 }
@@ -271,7 +295,7 @@ class WorkThread(
      * @param uiUpdatingTimer UI更新计时器
      * @return 是否跳过了更新
      */
-    fun extractPatch(
+    private fun extractPatch(
         version: String,
         newFile: NewFile,
         rawFile: File2,
@@ -380,5 +404,37 @@ class WorkThread(
         }
 
         return false
+    }
+
+    /**
+     * 使用进度条下载文件
+     * @param servers 服务器源
+     * @param filename 要下载的文件相对路径
+     * @param writeTo 写到哪个文件里
+     * @param lengthExpected 预期的文件长度
+     */
+    private fun downloadWithProgress(
+        servers: MultipleAvailableServers,
+        filename: String,
+        writeTo: File2,
+        lengthExpected: Long?
+    ) {
+        val sampler = SpeedSampler(3000)
+
+        servers.downloadFile(filename, writeTo, lengthExpected) { block, received, total ->
+            if (window == null)
+                return@downloadFile
+
+            sampler.feed(block)
+
+            val progress = if (total != null) received / total.toFloat() * 100 else 0f
+            val progressText = String.format("%.1f", progress)
+            val currentBytes = MiscUtils.convertBytes(received)
+            val totalBytes = if (total != null) MiscUtils.convertBytes(total) else "unknown"
+            val speedText = MiscUtils.convertBytes(sampler.speed)
+
+            window.progressBarText = "$progressText%  -  $currentBytes/$totalBytes   -   $speedText/s"
+            window.progressBarValue = (progress * 10).toInt()
+        }
     }
 }

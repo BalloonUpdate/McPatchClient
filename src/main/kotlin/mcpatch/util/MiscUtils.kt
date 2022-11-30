@@ -39,9 +39,12 @@ object MiscUtils
     /**
      * 根据文件大小选择合适的缓冲区大小
      * @param size 文件大小
+     * @param defaultSize 默认大小
      * @return 缓冲区大小
      */
-    fun chooseBufferSize(size: Long): Int {
+    fun chooseBufferSize(size: Long?, defaultSize: Int = 128 * 1024): Int {
+        if (size == null)
+            return defaultSize
         val kb = 1024
         val mb = 1024 * 1024
         val gb = 1024 * 1024 * 1024
@@ -64,9 +67,12 @@ object MiscUtils
     /**
      * 根据文件大小选择合适的下载进度报告大小
      * @param size 文件大小
+     * @param defaultSize 默认大小
      * @return 报告大小
      */
-    fun chooseReportSize(size: Long): Int {
+    fun chooseReportSize(size: Long?, defaultSize: Int = 128 * 1024): Int {
+        if (size == null)
+            return defaultSize
         val kb = 1024
         val mb = 1024 * 1024
         val gb = 1024 * 1024 * 1024

@@ -32,6 +32,12 @@ quiet-mode: false
 # 此选项仅当程序以JavaAgent模式（非图形模式）启动时有效
 no-throwing: false
 
+# 热更新（自升级）的版本号文件相对路径。
+# 此路径会被追加到服务器源的后面以用于获取服务端保存的客户端可执行文件最新版本号
+# 如果为空则会禁用热更新机制（默认值）
+# 如果不为空请填写一个相对路径
+# hotupdate: hotupdate/version.txt
+
 # 存储当前版本号的文件（一般无需修改此选项）
 # 起始目录为程序Jar文件所在目录
 # version-file: mc-patch-version.txt

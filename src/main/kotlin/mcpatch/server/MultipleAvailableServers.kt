@@ -26,7 +26,7 @@ class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
     }.also { if (it.isEmpty()) throw NoServerException() }
 
     /**
-     * 获取一个JsonObject
+     * 获取一个JsonObject（带自动重试机制）
      * @param relativePath 文件的相对路径
      * @param name 文件的描述
      */
@@ -43,7 +43,7 @@ class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
     }
 
     /**
-     * JsonArray
+     * 获取一个JsonArray（带自动重试机制）
      * @param relativePath 文件的相对路径
      * @param name 文件的描述
      */
@@ -60,7 +60,7 @@ class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
     }
 
     /**
-     * 获取文本文件的内容
+     * 获取文本文件的内容（带自动重试机制）
      * @param relativePath 文本文件的相对路径
      * @return 文本内容
      * @throws ConnectionRejectedException 当连接被拒绝时
@@ -73,7 +73,7 @@ class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
     }
 
     /**
-     * 下载一个二进制文件
+     * 下载一个二进制文件（带自动重试机制）
      * @param relativePath 文件的相对路径
      * @param writeTo 写到哪里
      * @param lengthExpected 文件的预期长度，用来报告下载进度
@@ -82,7 +82,7 @@ class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
      * @throws ConnectionInterruptedException 当连接意外断开时
      * @throws ConnectionTimeoutException 当发生超时时
      */
-    fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long, callback: OnDownload)
+    fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long?, callback: OnDownload)
     {
         downloadFileInternal(relativePath, writeTo, lengthExpected, callback)
     }
@@ -107,9 +107,8 @@ class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
     private fun downloadFileInternal(
         relativePath: String,
         writeTo: File2,
-        lengthExpected:
-        Long, callback:
-        OnDownload
+        lengthExpected: Long?,
+        callback: OnDownload
     ): AbstractServerSource {
         var ex: Throwable? = null
 
