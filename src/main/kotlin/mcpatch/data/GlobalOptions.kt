@@ -42,14 +42,9 @@ data class GlobalOptions(
     val httpConnectTimeout: Int,
 
     /**
-     * 全局http读取超时（单位毫秒）
+     * 全局http响应超时，也叫TTFB（单位毫秒）
      */
-    val httpReadTimeout: Int,
-
-    /**
-     * 全局http写入超时（单位毫秒）
-     */
-    val httpWriteTimeout: Int,
+    val httpResponseTimeout: Int,
 
     /**
      * 是否禁用主题
@@ -80,8 +75,7 @@ data class GlobalOptions(
                 noThrowing = getOption<Boolean>(map, "no-throwing") ?: false,
                 quietMode = getOption<Boolean>(map, "quiet-mode") ?: false,
                 httpConnectTimeout = getOption<Int>(map, "http-connect-timeout") ?: 3000,
-                httpReadTimeout = getOption<Int>(map, "http-read-timeout") ?: 5000,
-                httpWriteTimeout = getOption<Int>(map, "http-write-timeout") ?: 3000,
+                httpResponseTimeout = getOption<Int>(map, "http-response-timeout") ?: 2000,
                 disableTheme = getOption<Boolean>(map, "disable-theme") ?: true,
                 retryTimes = getOption<Int>(map, "retry-times") ?: 5,
             )

@@ -26,8 +26,8 @@ class HttpSupport(serverString: String, options: GlobalOptions) : AbstractServer
 
     val okClient = OkHttpClient.Builder()
         .connectTimeout(options.httpConnectTimeout.toLong(), TimeUnit.MILLISECONDS)
-        .readTimeout(options.httpReadTimeout.toLong(), TimeUnit.MILLISECONDS)
-        .writeTimeout(options.httpWriteTimeout.toLong(), TimeUnit.MILLISECONDS)
+        .readTimeout(options.httpResponseTimeout.toLong(), TimeUnit.MILLISECONDS)
+        .writeTimeout(options.httpResponseTimeout.toLong(), TimeUnit.MILLISECONDS)
         .build()
 
     val retryTimes: Int = options.retryTimes
@@ -45,7 +45,7 @@ class HttpSupport(serverString: String, options: GlobalOptions) : AbstractServer
             try {
                 okClient.newCall(req).execute().use { r ->
                     if (!r.isSuccessful) {
-                        val body = r.body?.string()?.run { if (length > 300) substring(0, 300) + "\n..." else this }
+                        val body = r.body?.string()?.limitLength()
                         throw HttpResponseStatusCodeException(r.code, url, body)
                     }
 
@@ -88,7 +88,7 @@ class HttpSupport(serverString: String, options: GlobalOptions) : AbstractServer
             try {
                 okClient.newCall(req).execute().use { r ->
                     if(!r.isSuccessful)
-                        throw HttpResponseStatusCodeException(r.code, link, r.body?.string())
+                        throw HttpResponseStatusCodeException(r.code, link, r.body?.string()?.limitLength())
 
                     val body = r.body!!
                     val bodyLen = if (body.contentLength() != -1L) body.contentLength() else lengthExpected
@@ -146,4 +146,9 @@ class HttpSupport(serverString: String, options: GlobalOptions) : AbstractServer
     }
 
     override fun close() { }
+
+    private fun String.limitLength(limit: Int = 500): String
+    {
+        return if (length > limit) substring(0, limit) + "\n..." else this
+    }
 }
