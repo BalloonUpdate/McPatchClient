@@ -12,9 +12,14 @@ data class GlobalOptions(
     val server: List<String>,
 
     /**
-     * 更新完成后是否自动关闭窗口并退出程序
+     * 是否在运行结束时显示提示框
      */
-    val autoExit: Boolean,
+    val showFinishMessage: Boolean,
+
+    /**
+     * 是否显示更新记录
+     */
+    val showChangelogs: Boolean,
 
     /**
      * 存储版本号的文件
@@ -69,7 +74,8 @@ data class GlobalOptions(
 
             return GlobalOptions(
                 server = server,
-                autoExit = getOption<Boolean>(map, "auto-exit") ?: false,
+                showFinishMessage = getOption<Boolean>(map, "show-finish-message") ?: true,
+                showChangelogs = getOption<Boolean>(map, "show-changelogs-message") ?: true,
                 verionFile = getOption<String>(map, "version-file") ?: "mc-patch-version.txt",
                 basePath = getOption<String>(map, "base-path") ?: "",
                 noThrowing = getOption<Boolean>(map, "no-throwing") ?: false,

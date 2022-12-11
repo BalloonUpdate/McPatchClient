@@ -104,7 +104,7 @@ class WorkThread(
                         currentVersionFile.content = version
 
                         // 显示更新记录
-                        if (window != null)
+                        if (window != null && options.showChangelogs)
                         {
                             val logs = meta.changeLogs.trim()
                             val title = if (logs.isEmpty()) "" else "已更新至版本 $version"
@@ -127,7 +127,7 @@ class WorkThread(
             }
 
             // 提示没有更新
-            if (window != null && downloadedVersions.isEmpty() && !options.autoExit && !options.quietMode)
+            if (window != null && downloadedVersions.isEmpty() && options.showFinishMessage && !options.quietMode)
             {
                 val title = Localization[LangNodes.finish_title_no_update]
                 val content = Localization[LangNodes.finish_content_no_update]
