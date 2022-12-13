@@ -13,6 +13,32 @@ import org.apache.http.config.ConnectionConfig
 import org.apache.http.config.SocketConfig
 import org.apache.http.impl.client.HttpClientBuilder
 import java.io.IOException
+import java.security.cert.X509Certificate
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
+
+fun CreateIgnoreVerifySsl(): SSLContext {
+    val context = SSLContext.getInstance("TLS")
+
+    context.init(null, arrayOf<TrustManager>(object : X509TrustManager {
+        override fun checkClientTrusted(
+            paramArrayOfX509Certificate: Array<X509Certificate?>?,
+            paramString: String?
+        ) {}
+
+        override fun checkServerTrusted(
+            paramArrayOfX509Certificate: Array<X509Certificate?>?,
+            paramString: String?
+        ) {}
+
+        override fun getAcceptedIssuers(): Array<X509Certificate?>? {
+            return null
+        }
+    }), null)
+
+    return context
+}
 
 class McPatchSardineImpl(username: String, password: String, options: GlobalOptions)
     : SardineImpl(
@@ -26,6 +52,7 @@ class McPatchSardineImpl(username: String, password: String, options: GlobalOpti
             .setDefaultRequestConfig(RequestConfig.custom()
                 .setConnectTimeout(options.httpConnectTimeout)
                 .build())
+            .setSSLContext(CreateIgnoreVerifySsl())
         , username, password
     )
 {
