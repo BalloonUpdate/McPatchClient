@@ -20,6 +20,7 @@ repositories {
 
 dependencies {
     implementation(files("libs/apache-ant-1.10.12.jar"))
+    implementation("com.github.lookfirst:sardine:5.10")
     implementation("com.hierynomus:sshj:0.34.0")
     implementation("org.json:json:20220924")
     implementation("org.yaml:snakeyaml:1.33")

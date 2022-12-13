@@ -1,24 +1,25 @@
-package mcpatch.server
+package mcpatch.server.impl
 
 import mcpatch.data.GlobalOptions
-import mcpatch.exception.*
+import mcpatch.exception.ConnectionInterruptedException
+import mcpatch.exception.ConnectionRejectedException
+import mcpatch.exception.ConnectionTimeoutException
+import mcpatch.exception.HttpResponseStatusCodeException
 import mcpatch.extension.FileExtension.bufferedOutputStream
-import mcpatch.logging.HttpResponseStatusCodeException
 import mcpatch.logging.Log
+import mcpatch.server.AbstractServerSource
+import mcpatch.server.OnDownload
 import mcpatch.util.File2
 import mcpatch.util.MiscUtils
-import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okio.Okio
-import java.io.BufferedInputStream
-import java.io.ByteArrayOutputStream
 import java.net.ConnectException
 import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 
-class HttpSupport(serverString: String, options: GlobalOptions) : AbstractServerSource
+class HttpSupport(serverString: String, options: GlobalOptions)
+    : AbstractServerSource()
 {
     val baseUrl = serverString
         .run { if (!endsWith("/")) "$this/" else this }
@@ -38,10 +39,7 @@ class HttpSupport(serverString: String, options: GlobalOptions) : AbstractServer
         val req = Request.Builder().url(url).build()
         Log.debug("http request on $url")
 
-        var ex: Throwable? = null
-        var retries = retryTimes
-        while (--retries >= 0)
-        {
+        return withRetrying(retryTimes, 1000) {
             try {
                 okClient.newCall(req).execute().use { r ->
                     if (!r.isSuccessful) {
@@ -49,26 +47,18 @@ class HttpSupport(serverString: String, options: GlobalOptions) : AbstractServer
                         throw HttpResponseStatusCodeException(r.code, url, body)
                     }
 
-                    return r.body!!.string()
+                    return@withRetrying r.body!!.string()
                 }
             } catch (e: ConnectException) {
-                ex = ConnectionRejectedException(url, e.message ?: "")
+                throw ConnectionRejectedException(url, e.message ?: "")
             } catch (e: SocketException) {
-                ex = ConnectionInterruptedException(url, e.message ?: "")
+                throw ConnectionInterruptedException(url, e.message ?: "")
             } catch (e: SocketTimeoutException) {
-                ex = ConnectionTimeoutException(url, e.message ?: "")
+                throw ConnectionTimeoutException(url, e.message ?: "")
             } catch (e: Throwable) {
-                ex = e
+                throw e
             }
-
-            Log.warn("")
-            Log.warn(ex.toString())
-            Log.warn("retrying $retries ...")
-
-            Thread.sleep(1000)
         }
-
-        throw ex!!
     }
 
     override fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long, callback: OnDownload)
@@ -81,10 +71,7 @@ class HttpSupport(serverString: String, options: GlobalOptions) : AbstractServer
         writeTo.makeParentDirs()
         val req = Request.Builder().url(link).build()
 
-        var ex: Throwable? = null
-        var retries = retryTimes
-        while (--retries >= 0)
-        {
+        return withRetrying(retryTimes, 1000) {
             try {
                 okClient.newCall(req).execute().use { r ->
                     if(!r.isSuccessful)
@@ -118,26 +105,18 @@ class HttpSupport(serverString: String, options: GlobalOptions) : AbstractServer
                         }
                     }
 
-                    return
+                    return@withRetrying
                 }
             } catch (e: ConnectException) {
-                ex = ConnectionInterruptedException(link, e.message ?: "")
+                throw ConnectionInterruptedException(link, e.message ?: "")
             } catch (e: SocketException) {
-                ex = ConnectionRejectedException(link, e.message ?: "")
+                throw ConnectionRejectedException(link, e.message ?: "")
             } catch (e: SocketTimeoutException) {
-                ex = ConnectionTimeoutException(link, e.message ?: "")
+                throw ConnectionTimeoutException(link, e.message ?: "")
             } catch (e: Throwable) {
-                ex = e
+                throw e
             }
-
-            Log.warn("")
-            Log.warn(ex.toString())
-            Log.warn("retrying $retries ...")
-
-            Thread.sleep(1000)
         }
-
-        throw ex!!
     }
 
     override fun buildURI(relativePath: String): String

@@ -1,6 +1,5 @@
 package mcpatch.exception
 
-import mcpatch.exception.BaseException
 import mcpatch.util.PathUtils
 
 class ConnectionTimeoutException(url: String, more: String)

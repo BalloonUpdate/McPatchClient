@@ -3,6 +3,9 @@ package mcpatch.server
 import mcpatch.data.GlobalOptions
 import mcpatch.exception.*
 import mcpatch.logging.Log
+import mcpatch.server.impl.HttpSupport
+import mcpatch.server.impl.SFTPSupport
+import mcpatch.server.impl.WebdavSupport
 import mcpatch.util.File2
 import org.json.JSONArray
 import org.json.JSONException
@@ -21,6 +24,8 @@ class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
             HttpSupport(serverString, options)
         else if (serverString.startsWith("sftp"))
             SFTPSupport(serverString, options)
+        else if (serverString.startsWith("webdav"))
+            WebdavSupport(serverString, options)
         else
             throw UnknownServerStringFormatException(serverString)
     }.also { if (it.isEmpty()) throw NoServerException() }

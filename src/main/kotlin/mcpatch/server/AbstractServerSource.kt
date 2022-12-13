@@ -3,11 +3,12 @@ package mcpatch.server
 import mcpatch.exception.ConnectionInterruptedException
 import mcpatch.exception.ConnectionRejectedException
 import mcpatch.exception.ConnectionTimeoutException
+import mcpatch.logging.Log
 import mcpatch.util.File2
 
 typealias OnDownload = (packageLength: Long, bytesReceived: Long, lengthExpected: Long) -> Unit
 
-interface AbstractServerSource : AutoCloseable
+abstract class AbstractServerSource : AutoCloseable
 {
     /**
      * 获取文本文件的内容
@@ -17,7 +18,7 @@ interface AbstractServerSource : AutoCloseable
      * @throws ConnectionInterruptedException 当连接意外断开时
      * @throws ConnectionTimeoutException 当发生超时时
      */
-    fun fetchText(relativePath: String): String
+    abstract fun fetchText(relativePath: String): String
 
     /**
      * 下载一个二进制文件
@@ -29,10 +30,39 @@ interface AbstractServerSource : AutoCloseable
      * @throws ConnectionInterruptedException 当连接意外断开时
      * @throws ConnectionTimeoutException 当发生超时时
      */
-    fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long, callback: OnDownload)
+    abstract fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long, callback: OnDownload)
 
     /**
      * 构建一个URI
      */
-    fun buildURI(relativePath: String): String
+    abstract fun buildURI(relativePath: String): String
+
+    /**
+     * 自动重试机制
+     * @param retryTimes 重试次数
+     * @param delay 重试间隔
+     * @param func 报告函数
+     */
+    protected fun <TResult> withRetrying(retryTimes: Int, delay: Int, func: () -> TResult): TResult
+    {
+        var ex: Throwable? = null
+        var retries = retryTimes
+
+        while (--retries >= 0)
+        {
+            try {
+                return func()
+            } catch (e: Throwable) {
+                ex = e
+            }
+
+            Log.warn("")
+            Log.warn(ex.toString())
+            Log.warn("retrying $retries ...")
+
+            Thread.sleep(delay.toLong())
+        }
+
+        throw ex!!
+    }
 }

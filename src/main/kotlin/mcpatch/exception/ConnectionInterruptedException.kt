@@ -1,6 +1,5 @@
 package mcpatch.exception
 
-import mcpatch.exception.BaseException
 import mcpatch.util.PathUtils
 
 class ConnectionInterruptedException(url: String, more: String)

@@ -1,9 +1,11 @@
-package mcpatch.server
+package mcpatch.server.impl
 
 import mcpatch.data.GlobalOptions
 import mcpatch.exception.*
 import mcpatch.extension.FileExtension.bufferedOutputStream
 import mcpatch.logging.Log
+import mcpatch.server.AbstractServerSource
+import mcpatch.server.OnDownload
 import mcpatch.util.File2
 import mcpatch.util.MiscUtils
 import net.schmizz.sshj.SSHClient
@@ -14,9 +16,8 @@ import net.schmizz.sshj.userauth.UserAuthException
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 
-class SFTPSupport(
-    serverString: String, val options: GlobalOptions
-) : AutoCloseable, AbstractServerSource
+class SFTPSupport(serverString: String, val options: GlobalOptions)
+    : AutoCloseable, AbstractServerSource()
 {
     val ssh = SSHClient()
     var sftp: SFTPClient? = null
@@ -27,6 +28,8 @@ class SFTPSupport(
     val username: String
     val password: String
     val basepath: String
+
+    val retryTimes: Int = options.retryTimes
 
     init {
         val reg = Regex("^sftp://(.+?):(.+?):(.+?)@(.+?):(\\d+)/((.+)(?<!/))?\$")
@@ -91,46 +94,32 @@ class SFTPSupport(
         checkOpen()
         Log.info("sftp reqeust on ${buildURI(relativePath)}")
 
-        var ex: Throwable? = null
-        var retries = options.retryTimes
-        while (--retries >= 0)
-        {
+        return withRetrying(retryTimes, 1000) {
             ByteArrayOutputStream().use { temp ->
-                ex = try {
+                try {
                     sftp!!.open(compositePath(relativePath)).use { file ->
                         file.RemoteFileInputStream().use { remote ->
                             remote.copyTo(temp)
                         }
                     }
 
-                    return temp.toByteArray().decodeToString()
+                    return@withRetrying temp.toByteArray().decodeToString()
                 } catch (e: SFTPException) {
-                    SFTPTransportException(buildURI(relativePath), e.message ?: "")
+                    throw SFTPTransportException(buildURI(relativePath), e.message ?: "")
                 } catch (e: Throwable) {
-                    e
+                    throw e
                 }
             }
-
-            Log.warn("")
-            Log.warn(ex.toString())
-            Log.warn("retrying $retries ...")
-
-            Thread.sleep(1000)
         }
-
-        throw ex!!
     }
 
     override fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long, callback: OnDownload)
     {
         checkOpen()
-        Log.info("sftp reqeust on ${buildURI(relativePath)}")
+        Log.info("sftp reqeust on ${buildURI(relativePath)}, write to: ${writeTo.path}")
 
-        var ex: Throwable? = null
-        var retries = options.retryTimes
-        while (--retries >= 0)
-        {
-            ex = try {
+        return withRetrying(retryTimes, 1000) {
+            try {
                 sftp!!.open(compositePath(relativePath)).use { file ->
                     file.RemoteFileInputStream().use { remote ->
                         writeTo.file.bufferedOutputStream(1024 * 1024).use { output ->
@@ -147,21 +136,13 @@ class SFTPSupport(
                     }
                 }
 
-                return
+                return@withRetrying
             } catch (e: SFTPException) {
-                SFTPTransportException(buildURI(relativePath), e.message ?: "")
+                throw SFTPTransportException(buildURI(relativePath), e.message ?: "")
             } catch (e: Throwable) {
-                e
+                throw e
             }
-
-            Log.warn("")
-            Log.warn(ex.toString())
-            Log.warn("retrying $retries ...")
-
-            Thread.sleep(1000)
         }
-
-        throw ex!!
     }
 
     override fun buildURI(relativePath: String): String

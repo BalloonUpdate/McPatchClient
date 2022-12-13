@@ -1,6 +1,5 @@
 package mcpatch.exception
 
-import mcpatch.exception.BaseException
 import mcpatch.util.PathUtils
 
 class ConnectionRejectedException(url: String, more: String)
