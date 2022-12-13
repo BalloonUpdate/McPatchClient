@@ -6,8 +6,8 @@
 #     2. https://127.0.0.1:6600/subfolder  （子目录形式，末尾不要加斜线，https协议）
 #
 #   webdav源：（webdav源的格式和http源很相似，注意webdav代表http，webdavs代表https，这样写是为了和http源做区分）
-#     1. webdav://user:pass:127.0.0.1:80:6600 （默认形式，webdav使用http协议）
-#     2. webdavs://user:pass:127.0.0.1:443:6600/subfolder （子目录形式，webdav使用https协议，注意https默认端口为443，而非80）
+#     1. webdav://user:pass:127.0.0.1:80 （默认形式，webdav使用http协议）
+#     2. webdavs://user:pass:127.0.0.1:443/subfolder （子目录形式，webdav使用https协议，注意https默认端口为443，而非80）
 #        说明: user是用户名，pass是密码，均不可省略，127.0.0.1是主机地址，80和443是端口（端口不可省略），subfolder是可选的子目录
 #
 #   sftp源例子： （一般情况下不建议使用sftp更新源，如果处理不好可能会有服务器安全隐患）
@@ -53,9 +53,18 @@ quiet-mode: false
 # 此选项仅当程序以JavaAgent模式（非图形模式）启动时有效
 no-throwing: false
 
+# 全局http连接超时（单位毫秒，仅对http源有效）
+http-connect-timeout: 3000
+
+# 全局http响应超时（单位毫秒，仅对http源有效）
+http-response-timeout: 5000
+
+# 出现网络问题时的重试次数（仅所有源有效）
+retry-times: 5
+
 # 存储当前版本号的文件（一般无需修改此选项）
 # 起始目录为程序Jar文件所在目录
-# version-file: mc-patch-version.txt
+version-file: mc-patch-version.txt
 
 # 显式指定“更新起始目录”，默认值是空字符串""（一般无需修改此选项）
 # 实际文件更新的起始目录 = 工作目录 + base-path
@@ -64,16 +73,4 @@ no-throwing: false
 # 3.如果base-path被设置为.minecraft222/，这样所有文件就会被更新到.minecraft222里
 # 如果此选项被注释或者为空字符串''，程序会自动寻找最近的.minecraft目录的父目录作为更新起始路径
 # 如果此选项未被注释，则会禁用自动搜寻.minecraft的功能。
-# base-path: ''
-
-# 全局http连接超时（单位毫秒，仅对http源有效）
-# http-connect-timeout: 3000
-
-# 全局http读取超时（单位毫秒，仅对http源有效）
-# http-read-timeout: 50000
-
-# 全局http写入超时（单位毫秒，仅对http源有效）
-# http-write-timeout: 3000
-
-# 出现网络问题时的重试次数（仅对http源有效）
-# retry-times: 5
+base-path: ''
