@@ -82,6 +82,18 @@ class WorkThread(
                         if (showWindow)
                             window!!.show()
 
+                        val jarPath = Environment.JarFile
+                        if (jarPath != null)
+                        {
+                            val relativePath = jarPath.relativizedBy(updateDir)
+
+                            if (meta.oldFiles.remove(relativePath))
+                                Log.warn("skiped the old file $relativePath, because it is not allowed to update the McPatchClient execuable file itself")
+
+                            if (meta.newFiles.removeIf { it.path == relativePath })
+                                Log.warn("skiped the new file $relativePath, because it is not allowed to update the McPatchClient execuable file itself")
+                        }
+
                         meta.oldFiles.forEach { Log.debug("old files: $it") }
                         meta.oldFolders.forEach { Log.debug("old dirs:  $it") }
                         meta.newFiles.forEach { Log.debug("new files: $it") }
