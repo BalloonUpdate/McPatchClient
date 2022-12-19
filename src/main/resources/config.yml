@@ -66,12 +66,6 @@ retry-times: 5
 # 起始目录为程序Jar文件所在目录
 version-file: mc-patch-version.txt
 
-# 是否对版本号记录文件，也就是version-file的文件内容进行编码，变得人类不可读
-# true：会对版本号文件进行编码，注意编码的安全性不及真正的加密，只是从明文保存变为非明文
-# false：使用明文存储版本号文件
-# 注意每次开启或者关闭此选项之后，都应该先删除version-file再运行程序，避免状态混乱
-encoded-version-file: false
-
 # 显式指定“更新起始目录”，默认值是空字符串""（一般无需修改此选项）
 # 实际文件更新的起始目录 = 工作目录 + base-path
 # 1.如果base-path被设置为'.'可以强制指定当前工作目录为更新起始目录并禁用.minecraft目录搜索
