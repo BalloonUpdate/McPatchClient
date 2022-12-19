@@ -162,12 +162,18 @@ class McPatchClient
         } catch (e: UpdateDirNotFoundException) {
             if (graphicsMode)
                 DialogUtils.error("", e.message ?: "<No Exception Message>")
+            else
+                throw e
         } catch (e: ConfigFileNotFoundException) {
             if (graphicsMode)
                 DialogUtils.error("", e.message ?: "<No Exception Message>")
+            else
+                throw e
         } catch (e: FailedToParsingException) {
             if (graphicsMode)
                 DialogUtils.error("", e.message ?: "<No Exception Message>")
+            else
+                throw e
         } finally {
             Log.info("RAM: " + MiscUtils.convertBytes(Runtime.getRuntime().usedMemory()))
         }
