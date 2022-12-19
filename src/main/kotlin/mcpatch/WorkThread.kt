@@ -3,6 +3,7 @@ package mcpatch
 import com.lee.bsdiff.BsPatch
 import mcpatch.data.*
 import mcpatch.exception.InvalidVersionException
+import mcpatch.exception.InvalidVersionNameException
 import mcpatch.exception.PatchCorruptedException
 import mcpatch.extension.FileExtension.bufferedInputStream
 import mcpatch.extension.FileExtension.bufferedOutputStream
@@ -19,6 +20,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import java.util.*
 import javax.swing.JOptionPane
 
 class WorkThread(
@@ -39,10 +41,11 @@ class WorkThread(
 
         MultipleAvailableServers(options).use { servers ->
             val currentVersionFile = progDir + options.verionFile
+            val (versionFileContent, encoded) = tryDecodeVersionFile(currentVersionFile.content)
 
             val allVersions = servers.fetchText("mc-patch-versions.txt").split("\n").filter { it.isNotEmpty() }
             val newestVersion = allVersions.lastOrNull() ?: "unknown"
-            val currentVersion = if (currentVersionFile.exists) currentVersionFile.content else "none"
+            val currentVersion = if (currentVersionFile.exists) versionFileContent else "none"
             val downloadedVersions: MutableList<Pair<String, VersionMetadata>> = mutableListOf()
 
             Log.debug("all versions: ")
@@ -113,7 +116,7 @@ class WorkThread(
                         }
 
                         // 更新版本号
-                        currentVersionFile.content = version
+                        currentVersionFile.content = tryEncodeVersionFile(version, encoded)
 
                         // 显示更新记录
                         if (window != null && options.showChangelogs)
@@ -392,5 +395,25 @@ class WorkThread(
         }
 
         return false
+    }
+
+    private fun tryDecodeVersionFile(text: String): Pair<String, Boolean>
+    {
+        if (!text.startsWith(":"))
+            return Pair(text, false)
+
+        try {
+            return Pair(Base64.getDecoder().decode(text.drop(1)).decodeToString(), true)
+        } catch (e: IllegalArgumentException) {
+            throw InvalidVersionNameException()
+        }
+    }
+
+    private fun tryEncodeVersionFile(text: String, encode: Boolean): String
+    {
+        if (!encode)
+            return text
+
+        return ":" + Base64.getEncoder().encodeToString(text.encodeToByteArray())
     }
 }

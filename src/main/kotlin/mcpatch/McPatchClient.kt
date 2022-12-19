@@ -1,27 +1,28 @@
 package mcpatch
 
-import mcpatch.data.*
-import mcpatch.exception.BaseException
-import mcpatch.exception.ConfigFileNotFoundException
-import mcpatch.exception.FailedToParsingException
-import mcpatch.exception.UpdateDirNotFoundException
+import com.github.kasuminova.GUI.SetupSwing
+import mcpatch.data.GlobalOptions
+import mcpatch.exception.*
+import mcpatch.extension.RuntimeExtension.usedMemory
 import mcpatch.gui.McPatchWindow
 import mcpatch.localization.LangNodes
 import mcpatch.localization.Localization
 import mcpatch.logging.ConsoleHandler
 import mcpatch.logging.FileHandler
 import mcpatch.logging.Log
-import mcpatch.util.*
-import com.github.kasuminova.GUI.SetupSwing
-import mcpatch.extension.RuntimeExtension.usedMemory
 import mcpatch.util.DialogUtils
+import mcpatch.util.Environment
+import mcpatch.util.File2
+import mcpatch.util.MiscUtils
 import org.json.JSONException
 import org.yaml.snakeyaml.Yaml
+import org.yaml.snakeyaml.reader.ReaderException
 import java.awt.Desktop
 import java.io.File
 import java.io.InterruptedIOException
 import java.lang.instrument.Instrumentation
 import java.nio.channels.ClosedByInterruptException
+import java.util.*
 import java.util.jar.JarFile
 
 class McPatchClient
@@ -174,6 +175,11 @@ class McPatchClient
                 DialogUtils.error("", e.message ?: "<No Exception Message>")
             else
                 throw e
+        } catch (e: InvalidConfigFileException) {
+            if (graphicsMode)
+                DialogUtils.error("", e.message ?: "<No Exception Message>")
+            else
+                throw e
         } finally {
             Log.info("RAM: " + MiscUtils.convertBytes(Runtime.getRuntime().usedMemory()))
         }
@@ -215,7 +221,7 @@ class McPatchClient
     fun readConfig(externalConfigFile: File2): Map<String, Any>
     {
         try {
-            val content: String
+            var content: String
             if(!externalConfigFile.exists)
             {
                 if(!Environment.IsProduction)
@@ -228,7 +234,21 @@ class McPatchClient
             } else {
                 content = externalConfigFile.content
             }
-            return Yaml().load(content)
+
+            if(content.startsWith(":"))
+            {
+                try {
+                    content = Base64.getDecoder().decode(content.drop(1)).decodeToString()
+                } catch (e: IllegalArgumentException) {
+                    throw InvalidConfigFileException()
+                }
+            }
+
+            try {
+                return Yaml().load(content)
+            } catch (e: ReaderException) {
+                throw InvalidConfigFileException()
+            }
         } catch (e: JSONException) {
             throw FailedToParsingException("配置文件config.yml", "yaml", e.message ?: "")
         }
