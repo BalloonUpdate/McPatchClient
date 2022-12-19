@@ -1,6 +1,6 @@
 package mcpatch.util
 
-import java.util.LinkedList
+import java.util.*
 
 /**
  * 网速采样
@@ -20,15 +20,67 @@ class SpeedSampler(val samplingPeriod: Int)
      * 进行采样
      * @param bytes 字节数
      */
-    fun feed(bytes: Long)
+    fun feed(bytes: Int)
     {
         val now = getNow()
 
-        samplingFrames.addLast((now.toLong() shl 32) + bytes)
-        samplingFrames.removeIf { (now - it.high32) > samplingPeriod }
+        val first = samplingFrames.lastOrNull()
+        if (first != null && first.high32 == now)
+        {
+            samplingFrames[0] = first + bytes
+            return
+        }
 
-        val firstTime = samplingFrames.first.high32
-        val timeSpan = now - firstTime
+        samplingFrames.addLast((now.toLong() shl 32) + bytes)
+
+        var lastInvalidIndex = -1
+        var firstValidIndex = -1
+        var lastInvalid = -1L
+        var firstValid = -1L
+
+        for ((index, frame) in samplingFrames.withIndex())
+        {
+            if (lastInvalidIndex == -1)
+            {
+                if ((now - frame.high32) > samplingPeriod)
+                {
+                    lastInvalidIndex = index
+                    lastInvalid = frame
+                }
+            } else {
+                if ((now - frame.high32) < samplingPeriod)
+                {
+                    firstValidIndex = index
+                    firstValid = frame
+                    break
+                }
+            }
+        }
+
+        if (lastInvalidIndex != -1 && firstValidIndex != -1)
+        {
+            var min = (now - firstValid) - samplingPeriod
+            var max = (now - lastInvalid) - samplingPeriod
+            var threshold = samplingPeriod.toLong()
+            min += -min
+            max += -min
+            threshold += -min
+
+            val insideValid = threshold.toFloat() / max
+
+            for (i in 0 until (lastInvalidIndex + 1))
+                samplingFrames.removeFirst()
+
+            val h32 = now - samplingPeriod
+            val l32 = (firstValid.low32 * insideValid).toInt()
+            samplingFrames.addFirst(((h32 shl 32) + l32).toLong())
+
+        } else {
+            for (i in 0 until (lastInvalidIndex))
+                samplingFrames.removeFirst()
+        }
+
+        val timeSpan = now - samplingFrames.first.high32
 
         if (timeSpan > 0)
             speed = (samplingFrames.sumOf { it.low32 } / timeSpan * 1000).toLong()

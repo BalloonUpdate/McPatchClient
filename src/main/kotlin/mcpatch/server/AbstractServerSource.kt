@@ -65,4 +65,26 @@ abstract class AbstractServerSource : AutoCloseable
 
         throw ex!!
     }
+
+    protected class ReduceReportingFrequency
+    {
+        var lastReport = System.currentTimeMillis()
+        var accumulation = 0L
+
+        fun feed(bytes: Int): Long
+        {
+            accumulation += bytes
+
+            val now = System.currentTimeMillis()
+            if (now - lastReport > 200)
+            {
+                lastReport = now
+                val value = accumulation
+                accumulation = 0
+                return value
+            }
+
+            return 0
+        }
+    }
 }

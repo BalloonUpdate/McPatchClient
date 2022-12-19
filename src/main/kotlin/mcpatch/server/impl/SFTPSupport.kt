@@ -126,11 +126,16 @@ class SFTPSupport(serverString: String, val options: GlobalOptions)
                             var bytesReceived: Long = 0
                             var len: Int
                             val buffer = ByteArray(MiscUtils.chooseBufferSize(lengthExpected))
+                            val rrf = ReduceReportingFrequency()
 
-                            while (remote.read(buffer).also { len = it; bytesReceived += it } != -1)
+                            while (remote.read(buffer).also { len = it } != -1)
                             {
                                 output.write(buffer, 0, len)
-                                callback(len.toLong(), bytesReceived, lengthExpected)
+                                bytesReceived += len
+
+                                val report = rrf.feed(len)
+                                if (report > 0)
+                                    callback(report, bytesReceived, lengthExpected)
                             }
                         }
                     }

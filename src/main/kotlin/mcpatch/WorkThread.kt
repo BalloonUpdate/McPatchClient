@@ -175,7 +175,7 @@ class WorkThread(
             if (window == null)
                 return@downloadFile
 
-            sampler.feed(packageLength)
+            sampler.feed(packageLength.toInt())
 
             // 每隔500年更新一次ui
             if (System.currentTimeMillis() - time < 200)

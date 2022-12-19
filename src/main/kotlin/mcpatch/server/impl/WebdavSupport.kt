@@ -98,9 +98,15 @@ class WebdavSupport(serverString: String, val options: GlobalOptions)
                         var bytesReceived: Long = 0
                         var len: Int
                         val buffer = ByteArray(MiscUtils.chooseBufferSize(bodyLen))
+                        val rrf = ReduceReportingFrequency()
 
                         while (remote.read(buffer).also { len = it; bytesReceived += it } != -1) {
                             output.write(buffer, 0, len)
+
+                            val report = rrf.feed(len)
+                            if (report > 0)
+                                callback(report, bytesReceived, bodyLen)
+
                             callback(len.toLong(), bytesReceived, bodyLen)
                         }
                     }

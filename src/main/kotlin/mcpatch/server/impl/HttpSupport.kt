@@ -86,21 +86,16 @@ class HttpSupport(serverString: String, options: GlobalOptions)
                             var bytesReceived: Long = 0
                             var len: Int
                             val buffer = ByteArray(bufferSize)
+                            val rrf = ReduceReportingFrequency()
 
-                            // 尽量减少报告下载进度的次数，太频繁报告会影响性能
-                            val bulklyReportSize = MiscUtils.chooseReportSize(bodyLen)
-                            var bulklyReport = 0
-
-                            while (input.read(buffer).also { len = it; bytesReceived += it } != -1)
+                            while (input.read(buffer).also { len = it } != -1)
                             {
                                 output.write(buffer, 0, len)
+                                bytesReceived += len
 
-                                bulklyReport += len
-                                if (bulklyReport > bulklyReportSize)
-                                {
-                                    callback(bulklyReport.toLong(), bytesReceived, bodyLen)
-                                    bulklyReport = 0
-                                }
+                                val report = rrf.feed(len)
+                                if (report > 0)
+                                    callback(report, bytesReceived, bodyLen)
                             }
                         }
                     }
