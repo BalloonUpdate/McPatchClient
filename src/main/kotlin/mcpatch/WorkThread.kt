@@ -41,7 +41,7 @@ class WorkThread(
 
         MultipleAvailableServers(options).use { servers ->
             val currentVersionFile = progDir + options.verionFile
-            val (versionFileContent, encoded) = tryDecodeVersionFile(currentVersionFile.content)
+            val (versionFileContent, encoded) = if (currentVersionFile.exists) tryDecodeVersionFile(currentVersionFile.content) else Pair("", false)
 
             val allVersions = servers.fetchText("mc-patch-versions.txt").split("\n").filter { it.isNotEmpty() }
             val newestVersion = allVersions.lastOrNull() ?: "unknown"
