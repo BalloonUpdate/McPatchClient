@@ -19,6 +19,7 @@ import org.yaml.snakeyaml.Yaml
 import org.yaml.snakeyaml.reader.ReaderException
 import java.awt.Desktop
 import java.io.File
+import java.io.IOException
 import java.io.InterruptedIOException
 import java.lang.instrument.Instrumentation
 import java.nio.channels.ClosedByInterruptException
@@ -33,7 +34,7 @@ class McPatchClient
      * @param hasStandaloneProgress 程序是否拥有独立的进程。从JavaAgent参数启动没有独立进程，双击启动有独立进程（java -jar xx.jar也属于独立启动）
      * @param externalConfigFile 可选的外部配置文件路径，如果为空则使用 progDir/config.yml
      * @param enableLogFile 是否写入日志文件
-     * @param disableTheme 是否禁用主题
+     * @param disableTheme 是否禁用主题，此选项和配置文件中的选项任意一个为true都会禁用主题
      */
     fun run(
         graphicsMode: Boolean,
@@ -315,19 +316,83 @@ class McPatchClient
 
     companion object {
         /**
+         * 以独立进程启动
+         */
+        @JvmStatic
+        fun startStandalone(
+            graphicsMode: Boolean,
+            standaloneProgress: Boolean,
+            externalConfigFile: File2?,
+            enableLogFile: Boolean,
+            disableTheme: Boolean
+        ) {
+            val libpath = System.getProperty("java.library.path").split(File.separator).first()
+            val jar = Environment.JarFile!!.platformPath
+
+            fun appendPath(env: MutableMap<String, String>): MutableMap<String, String>
+            {
+                val path = env["PATH"] ?: ""
+                env["PATH"] = path + (if (path.trim().isNotEmpty()) File.separator else "") + libpath
+                return env
+            }
+
+            // 测试是否可以启动独立进程
+            val test = ProcessBuilder("java", "-version")
+            appendPath(test.environment())
+            try {
+                test.start().waitFor()
+            } catch (e: IOException) {
+                throw PermissionDeniedException()
+            }
+
+            val pb = ProcessBuilder("java", "-jar", jar)
+            val env = pb.environment()
+            val path = env["PATH"] ?: ""
+            env["PATH"] = path + (if (path.trim().isNotEmpty()) File.separator else "") + libpath
+            env["MC_PATCH_CLIENT_GRAPHICS_MODE"] = graphicsMode.toString()
+            env["MC_PATCH_CLIENT_STANDALONE"] = standaloneProgress.toString()
+            env["MC_PATCH_CLIENT_EXTERNAL_CONFIG"] = externalConfigFile?.platformPath ?: ""
+            env["MC_PATCH_CLIENT_ENABLE_LOG_FILE"] = enableLogFile.toString()
+            env["MC_PATCH_CLIENT_DISABLE_THEME"] = disableTheme.toString()
+            pb.inheritIO()
+
+            val process = pb.start()
+            val exitCode = process.waitFor()
+            if (exitCode != 0)
+                throw WrappedInstanceException(exitCode)
+        }
+
+        /**
          * 从JavaAgent启动
          */
         @JvmStatic
         fun premain(agentArgs: String?, ins: Instrumentation?)
         {
-            val useGraphicsMode = agentArgs != "windowless" && Desktop.isDesktopSupported()
-            McPatchClient().run(
-                graphicsMode = useGraphicsMode,
-                hasStandaloneProgress = false,
-                externalConfigFile = null,
-                enableLogFile = true,
-                disableTheme = false
-            )
+            val autoUseGraphicsMode = agentArgs != "windowless" && Desktop.isDesktopSupported()
+
+            if (!Environment.IsProduction)
+                throw RuntimeException("McPatchClient must be in production mode to be started in JavaAgent mode")
+
+            try {
+                startStandalone(
+                    graphicsMode = autoUseGraphicsMode,
+                    standaloneProgress = false,
+                    externalConfigFile = null,
+                    enableLogFile = true,
+                    disableTheme = false
+                )
+            } catch (e: PermissionDeniedException) {
+                println("fail to start McPatchClient using standalone process, fallback to non-standalone mode ...")
+
+                McPatchClient().run(
+                    graphicsMode = autoUseGraphicsMode,
+                    hasStandaloneProgress = false,
+                    externalConfigFile = null,
+                    enableLogFile = true,
+                    disableTheme = false
+                )
+            }
+
             Log.info("finished!")
         }
 
@@ -337,14 +402,16 @@ class McPatchClient
         @JvmStatic
         fun main(args: Array<String>)
         {
-            val useGraphicsMode = !(args.isNotEmpty() && args[0] == "windowless") && Desktop.isDesktopSupported()
+            val autoGraphicsMode = !(args.isNotEmpty() && args[0] == "windowless") && Desktop.isDesktopSupported()
+
             McPatchClient().run(
-                graphicsMode = useGraphicsMode,
-                hasStandaloneProgress = true,
-                externalConfigFile = null,
-                enableLogFile = true,
-                disableTheme = false
+                graphicsMode = (System.getenv("MC_PATCH_CLIENT_GRAPHICS_MODE") ?: "").ifEmpty { autoGraphicsMode.toString() } == "true",
+                hasStandaloneProgress = (System.getenv("MC_PATCH_CLIENT_STANDALONE") ?: "true") == "true",
+                externalConfigFile = (System.getenv("MC_PATCH_CLIENT_EXTERNAL_CONFIG") ?: "").run { if (this.isEmpty()) null else File2(this) },
+                enableLogFile = (System.getenv("MC_PATCH_CLIENT_ENABLE_LOG_FILE") ?: "true") == "true",
+                disableTheme = (System.getenv("MC_PATCH_CLIENT_DISABLE_THEME") ?: "false") == "true"
             )
+
             Log.info("finished!")
         }
 
