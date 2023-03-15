@@ -23,6 +23,9 @@
 #
 server: http://127.0.0.1:6600
 
+# 指定UA，一般情况下无需填写。
+client-ua: McPatchClient
+
 # 是否禁用界面主题
 # true: 禁用界面主题，可以解决窗口出现无响应的问题！
 # false: 不会禁用界面主题，运行在某些机器上时可能会出现窗口出现无响应的问题！
@@ -31,7 +34,7 @@ disable-theme: false
 # 是否在没有任何更新时，显示暂无更新的对话框（通常是：资源文件暂无更新!）
 # true：更新完成后会显示“暂无更新”的对话框，需要手点确定
 # false：更新完成后会自动退出，无需手动操作
-# 本地调试环境建议开启，线上环境建议关闭。当quiet-mode开启时，本设置会被强制设置为false
+# 本地调试环境建议开启，线上环境建议关闭。当quiet-mode开启时，本设置会被强制覆盖为false，无法变更。
 show-finish-message: true
 
 # 是否显示更新记录
@@ -74,4 +77,5 @@ version-file: mc-patch-version.txt
 # 3.如果base-path被设置为.minecraft222/，这样所有文件就会被更新到.minecraft222里
 # 如果此选项被注释或者为空字符串''，程序会自动寻找最近的.minecraft目录的父目录作为更新起始路径
 # 如果此选项未被注释，则会禁用自动搜寻.minecraft的功能。
+# 如您使用版本隔离，此处推荐填写'.'
 base-path: ''

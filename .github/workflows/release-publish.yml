@@ -14,12 +14,13 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup Java
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v3
         with:
-          java-version: 8
+          java-version: '8'
+          distribution: 'zulu'
 
       - name: Gradle Build
-        uses: gradle/gradle-build-action@v1.5.1
+        uses: gradle/gradle-build-action@67421db6bd0bf253fb4bd25b31ebb98943c375e1
         with:
           arguments: shadowJar
       
