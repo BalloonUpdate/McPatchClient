@@ -360,7 +360,7 @@ class WorkThread(
                 // 将修补好的文件输出到临时文件里
                 rawFile.file.bufferedInputStream().use { old ->
                     tempFile.file.bufferedOutputStream().use { temp ->
-                        patch.skip(newFile.blockOffset - pointer.value)
+                        patch.actuallySkip(newFile.blockOffset - pointer.value)
 
                         // 拿到解压好的原始数据
                         ByteArrayOutputStream().use { decompressed ->
