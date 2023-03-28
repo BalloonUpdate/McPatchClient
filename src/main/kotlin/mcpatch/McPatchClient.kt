@@ -373,7 +373,17 @@ class McPatchClient
             if (!Environment.IsProduction)
                 throw RuntimeException("McPatchClient must be in production mode to be started in JavaAgent mode")
 
+            val legacyStart = JarFile(Environment.JarFile!!.path).use { jar -> jar.getJarEntry(".no-standalone-process") != null }
+
             try {
+                if (legacyStart)
+                {
+                    println("Use legacy starting up method")
+                    throw PermissionDeniedException()
+                }
+
+                println("Use standalone process starting up method")
+
                 startStandalone(
                     graphicsMode = autoUseGraphicsMode,
                     standaloneProgress = false,
@@ -382,7 +392,8 @@ class McPatchClient
                     disableTheme = false
                 )
             } catch (e: PermissionDeniedException) {
-                println("fail to start McPatchClient using standalone process, fallback to non-standalone mode ...")
+                if (!legacyStart)
+                    println("fail to start McPatchClient using standalone process, fallback to non-standalone mode ...")
 
                 McPatchClient().run(
                     graphicsMode = autoUseGraphicsMode,
