@@ -9,6 +9,7 @@ import mcpatch.extension.FileExtension.bufferedInputStream
 import mcpatch.extension.FileExtension.bufferedOutputStream
 import mcpatch.extension.StreamExtension.actuallySkip
 import mcpatch.extension.StreamExtension.copyAmountTo
+import mcpatch.gui.ChangeLogs
 import mcpatch.gui.McPatchWindow
 import mcpatch.localization.LangNodes
 import mcpatch.localization.Localization
@@ -74,69 +75,89 @@ class WorkThread(
                     version to VersionMetadata(meta)
                 })
 
-                // 依次下载缺失的版本
-                for ((version, meta) in downloadedVersions)
-                {
-                    try {
-                        Log.openTag(version)
-                        val showWindow = window != null && options.quietMode && meta.newFiles.isNotEmpty()
+                // 收集到的更新记录
+                val changeLogs = mutableListOf<Pair<String, String>>()
 
-                        // 延迟打开窗口
-                        if (showWindow)
-                            window!!.show()
+                try {
+                    // 依次下载缺失的版本
+                    for ((version, meta) in downloadedVersions)
+                    {
+                        try {
+                            Log.openTag(version)
+                            val showWindow = window != null && options.quietMode && meta.newFiles.isNotEmpty()
 
-                        val jarPath = Environment.JarFile
-                        if (jarPath != null)
-                        {
-                            val relativePath = jarPath.relativizedBy(updateDir)
+                            // 延迟打开窗口
+                            if (showWindow)
+                                window!!.show()
 
-                            if (meta.oldFiles.remove(relativePath))
-                                Log.warn("skiped the old file $relativePath, because it is not allowed to update the McPatchClient execuable file itself")
+                            val jarPath = Environment.JarFile
+                            if (jarPath != null)
+                            {
+                                val relativePath = jarPath.relativizedBy(updateDir)
 
-                            if (meta.newFiles.removeIf { it.path == relativePath })
-                                Log.warn("skiped the new file $relativePath, because it is not allowed to update the McPatchClient execuable file itself")
+                                if (meta.oldFiles.remove(relativePath))
+                                    Log.warn("skiped the old file $relativePath, because it is not allowed to update the McPatchClient execuable file itself")
+
+                                if (meta.newFiles.removeIf { it.path == relativePath })
+                                    Log.warn("skiped the new file $relativePath, because it is not allowed to update the McPatchClient execuable file itself")
+                            }
+
+                            meta.oldFiles.forEach { Log.debug("old files: $it") }
+                            meta.oldFolders.forEach { Log.debug("old dirs:  $it") }
+                            meta.newFiles.forEach { Log.debug("new files: $it") }
+                            meta.newFolders.forEach { Log.debug("new dirs:  $it") }
+
+                            // 删除旧文件和旧目录，还有创建新目录
+                            meta.oldFiles.map { (updateDir + it) }.forEach { it.delete() }
+                            meta.oldFolders.map { (updateDir + it) }.forEach { it.delete() }
+                            meta.newFolders.map { (updateDir + it) }.forEach { it.mkdirs() }
+
+                            // 下载文件
+                            if (meta.newFiles.isNotEmpty())
+                            {
+                                val patchFile = downloadPatch(meta, version, servers)
+                                applyPatch(meta, version, updateDir, patchFile)
+                                patchFile.delete()
+                            }
+
+                            // 更新版本号
+                            currentVersionFile.content = tryEncodeVersionFile(version, encoded)
+
+                            // 显示更新记录
+                            if (window != null && options.showChangelogs)
+                            {
+                                changeLogs.add(Pair(version, meta.changeLogs.trim()))
+                            } else {
+                                val content = meta.changeLogs.trim()
+                                Log.info("========== $version ==========")
+                                if (content.isNotEmpty())
+                                {
+                                    Log.info(content)
+                                    Log.info("")
+                                }
+                            }
+
+                            // 隐藏窗口
+                            if (showWindow)
+                                window!!.hide()
+                        } finally {
+                            Log.closeTag()
+                        }
+                    }
+
+                } finally {
+                    if (changeLogs.isNotEmpty())
+                    {
+                        val content = changeLogs.joinToString("\n\n\n") { cl ->
+                            val title = cl.first
+                            val content = cl.second.ifEmpty { "已更新至此" }
+                            "========== $title ==========\n$content"
                         }
 
-                        meta.oldFiles.forEach { Log.debug("old files: $it") }
-                        meta.oldFolders.forEach { Log.debug("old dirs:  $it") }
-                        meta.newFiles.forEach { Log.debug("new files: $it") }
-                        meta.newFolders.forEach { Log.debug("new dirs:  $it") }
-
-                        // 删除旧文件和旧目录，还有创建新目录
-                        meta.oldFiles.map { (updateDir + it) }.forEach { it.delete() }
-                        meta.oldFolders.map { (updateDir + it) }.forEach { it.delete() }
-                        meta.newFolders.map { (updateDir + it) }.forEach { it.mkdirs() }
-
-                        // 下载文件
-                        if (meta.newFiles.isNotEmpty())
-                        {
-                            val patchFile = downloadPatch(meta, version, servers)
-                            applyPatch(meta, version, updateDir, patchFile)
-                            patchFile.delete()
-                        }
-
-                        // 更新版本号
-                        currentVersionFile.content = tryEncodeVersionFile(version, encoded)
-
-                        // 显示更新记录
-                        if (window != null && options.showChangelogs)
-                        {
-                            val logs = meta.changeLogs.trim()
-                            val title = if (logs.isEmpty()) "" else "已更新至版本 $version"
-                            val content = logs.ifEmpty { "已更新至版本 $version" }
-                            JOptionPane.showMessageDialog(null, content, title, JOptionPane.INFORMATION_MESSAGE)
-                        } else {
-                            val content = meta.changeLogs.trim().ifEmpty { "No change logs for the version $version" }
-                            Log.info("========== changelogs for version $version ==========")
-                            Log.info(content.prependIndent("|"))
-                            Log.info("")
-                        }
-
-                        // 隐藏窗口
-                        if (showWindow)
-                            window!!.hide()
-                    } finally {
-                        Log.closeTag()
+                        val cl = ChangeLogs()
+                        cl.titleText = "更新记录"
+                        cl.contentText = content
+                        cl.waitForClose()
                     }
                 }
             }
