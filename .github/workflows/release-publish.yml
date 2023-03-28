@@ -1,34 +1,33 @@
-  
-name: Build Release
+name: release publish
 
 on:
   push:
-    tags: 
+    tags:
       - "v*"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - name: Setup Java
+      - name: Setup JDK
         uses: actions/setup-java@v3
         with:
-          java-version: '8'
-          distribution: 'zulu'
+          java-version: 8
+          distribution: zulu
 
-      - name: Gradle Build
-        uses: gradle/gradle-build-action@67421db6bd0bf253fb4bd25b31ebb98943c375e1
+      - name: Build
+        uses: gradle/gradle-build-action@v2.4.0
         with:
           arguments: shadowJar
-      
-      - name: Publish Release
-        uses: xresloader/upload-to-github-release@v1.3.9
+
+
+      - name: Publish
+        uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           file: build/libs/*
           draft: false
-          tags: true        
+          tags: true
