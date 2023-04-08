@@ -27,6 +27,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.10.0")
     implementation("com.formdev:flatlaf:2.6")
     implementation("com.formdev:flatlaf-intellij-themes:2.6")
+    implementation("org.apache.commons:commons-compress:1.23.0")
     testImplementation(kotlin("test"))
 }
 

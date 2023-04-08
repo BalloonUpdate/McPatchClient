@@ -1,14 +1,15 @@
 package mcpatch
 
 import com.lee.bsdiff.BsPatch
-import mcpatch.data.*
+import mcpatch.core.PatchFileReader
+import mcpatch.data.GlobalOptions
+import mcpatch.data.ModificationMode
 import mcpatch.exception.InvalidVersionException
 import mcpatch.exception.InvalidVersionNameException
 import mcpatch.exception.PatchCorruptedException
 import mcpatch.extension.FileExtension.bufferedInputStream
 import mcpatch.extension.FileExtension.bufferedOutputStream
-import mcpatch.extension.StreamExtension.actuallySkip
-import mcpatch.extension.StreamExtension.copyAmountTo
+import mcpatch.extension.StreamExtension.copyAmountTo1
 import mcpatch.gui.ChangeLogs
 import mcpatch.gui.McPatchWindow
 import mcpatch.localization.LangNodes
@@ -16,11 +17,7 @@ import mcpatch.localization.Localization
 import mcpatch.logging.Log
 import mcpatch.server.MultipleAvailableServers
 import mcpatch.util.*
-import org.apache.tools.bzip2.CBZip2InputStream
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.InputStream
 import java.util.*
 import javax.swing.JOptionPane
 
@@ -44,52 +41,65 @@ class WorkThread(
             val currentVersionFile = progDir + options.verionFile
             val (versionFileContent, encoded) = if (currentVersionFile.exists) tryDecodeVersionFile(currentVersionFile.content) else Pair("", false)
 
-            val allVersions = servers.fetchText("mc-patch-versions.txt").split("\n").filter { it.isNotEmpty() }
-            val newestVersion = allVersions.lastOrNull() ?: "unknown"
-            val currentVersion = if (currentVersionFile.exists) versionFileContent else "none"
-            val downloadedVersions: MutableList<Pair<String, VersionMetadata>> = mutableListOf()
+            val allVersions = servers.fetchText("versions.txt").split("\n").filter { it.isNotEmpty() }
+            val newestVersion = allVersions.lastOrNull()
+            val currentVersion = if (currentVersionFile.exists) versionFileContent else null
+            val downloadedVersions = mutableListOf<String>()
 
             Log.debug("all versions: ")
             allVersions.forEach { Log.debug("  - $it") }
             Log.info("current version: $currentVersion, newest version: $newestVersion")
 
+            if (newestVersion == null)
+                throw InvalidVersionException("服务端版本号列表为空，更新失败！")
+
             // 如果当前版本和最新版本不一致
-            if (newestVersion != "unknown" && currentVersion != newestVersion)
+            if (currentVersion != newestVersion)
             {
                 // 更新UI
                 window?.labelText = Localization[LangNodes.fetch_metadata]
 
                 // 是否是合法的版本号
-                if (currentVersion !in allVersions && currentVersion != "none")
-                    throw InvalidVersionException(currentVersion)
+                if (currentVersion !in allVersions && currentVersion != null)
+                {
+                    if (!options.autoRestartVersion)
+                        throw InvalidVersionException("当前客户端版本号 $currentVersion 不在服务端的版本号列表里，无法确定版本前后关系，更新失败！")
+
+                    Log.info("restarted the version")
+                }
 
                 // 收集落后的版本
                 val position = allVersions.indexOf(currentVersion)
                 val missingVersions = allVersions.drop(if (position == -1) 0 else position + 1)
+                downloadedVersions.addAll(missingVersions)
 
                 Log.info("missing versions: $missingVersions")
-
-                // 获取落后的版本的元数据
-                downloadedVersions.addAll(missingVersions.map { version ->
-                    val meta = servers.fetchJsonObject("$version.mc-patch.json", "版本Meta文件 $version")
-                    version to VersionMetadata(meta)
-                })
 
                 // 收集到的更新记录
                 val changeLogs = mutableListOf<Pair<String, String>>()
 
                 try {
                     // 依次下载缺失的版本
-                    for ((version, meta) in downloadedVersions)
+                    for (version in missingVersions)
                     {
                         try {
                             Log.openTag(version)
-                            val showWindow = window != null && options.quietMode && meta.newFiles.isNotEmpty()
+                            val showWindow = window != null && options.quietMode
 
                             // 延迟打开窗口
                             if (showWindow)
                                 window!!.show()
 
+                            window?.labelText = "正在下载资源更新包 $version"
+
+                            // 下载更新包
+                            val patchFile = downloadPatchFile("$version.mcpatch.zip", version, servers)
+
+                            // 读取文件
+                            val reader = PatchFileReader(version, patchFile)
+                            val meta = reader.meta
+
+                            // 不能更新自己
                             val jarPath = Environment.JarFile
                             if (jarPath != null)
                             {
@@ -102,6 +112,9 @@ class WorkThread(
                                     Log.warn("skiped the new file $relativePath, because it is not allowed to update the McPatchClient execuable file itself")
                             }
 
+                            window?.labelText = "正在应用更新包 $version"
+
+                            // 输出日志
                             meta.oldFiles.forEach { Log.debug("old files: $it") }
                             meta.oldFolders.forEach { Log.debug("old dirs:  $it") }
                             meta.newFiles.forEach { Log.debug("new files: $it") }
@@ -112,18 +125,117 @@ class WorkThread(
                             meta.oldFolders.map { (updateDir + it) }.forEach { it.delete() }
                             meta.newFolders.map { (updateDir + it) }.forEach { it.mkdirs() }
 
-                            // 下载文件
-                            if (meta.newFiles.isNotEmpty())
+                            // 处理所有新文件
+                            val timer = IntervalTimer(150)
+                            val skipped = mutableListOf<String>()
+
+                            for (entry in reader)
                             {
-                                val patchFile = downloadPatch(meta, version, servers)
-                                applyPatch(meta, version, updateDir, patchFile)
-                                patchFile.delete()
+                                val rawFile = updateDir + entry.newFile.path
+                                val tempFile = rawFile.parent + (rawFile.name + ".mcpatch-temporal.bin")
+
+                                rawFile.parent.mkdirs()
+
+                                // 更新UI
+                                if (window != null && timer.timeout)
+                                    window.progressBarText = entry.newFile.path
+
+                                when(entry.mode)
+                                {
+                                    ModificationMode.Empty -> {
+                                        Log.info("Empty: ${entry.newFile.path}")
+                                        rawFile.delete()
+                                        rawFile.create()
+                                    }
+
+                                    ModificationMode.Fill -> {
+                                        Log.info("Fill: ${entry.newFile.path}")
+
+                                        // 如果本地文件已经存在，且校验一致，就跳过更新
+                                        if (rawFile.exists && HashUtils.sha1(rawFile.file) == entry.newFile.newHash)
+                                        {
+                                            skipped.add(entry.newFile.path)
+                                            continue
+                                        }
+
+                                        var time = System.currentTimeMillis() + 300
+
+                                        tempFile.file.bufferedOutputStream().use { dest ->
+                                            entry.getInputStream().use { src ->
+
+                                                // 解压数据
+                                                src.copyAmountTo1(dest, entry.newFile.rawLength, callback = { copied, total ->
+                                                    if (System.currentTimeMillis() - time < 100)
+                                                        return@copyAmountTo1
+                                                    time = System.currentTimeMillis()
+                                                    window?.progressBarValue = ((copied.toFloat() / total.toFloat()) * 1000).toInt()
+                                                })
+                                            }
+                                        }
+
+                                        if (HashUtils.sha1(tempFile.file) != entry.newFile.newHash)
+                                            throw PatchCorruptedException(version, "中的文件更新后数据校验不通过 ${entry.newFile.path} (fill)", 0)
+                                    }
+
+                                    ModificationMode.Modify -> {
+                                        val notFound = !rawFile.exists
+                                        val notMatched =
+                                            if (notFound) false else HashUtils.sha1(rawFile.file) != entry.newFile.oldHash
+
+                                        // 文件不存在或者校验不匹配
+                                        val extraMsg = if (notFound) " (skip because the old file not found)" else
+                                            if (notMatched) " (skip because hash not matched)" else ""
+
+                                        Log.info("Modify: ${entry.newFile.path}$extraMsg")
+
+                                        if (extraMsg.isNotEmpty()) {
+                                            skipped.add(entry.newFile.path)
+                                            continue
+                                        }
+
+                                        rawFile.file.bufferedInputStream().use { old ->
+                                            entry.getInputStream().use { patch ->
+                                                tempFile.file.bufferedOutputStream().use { result ->
+                                                    BsPatch().bspatch(old, patch, result, old.available(), entry.newFile.rawLength.toInt())
+                                                }
+                                            }
+                                        }
+
+                                        if (HashUtils.sha1(tempFile.file) != entry.newFile.newHash)
+                                            throw PatchCorruptedException(version, "中的文件更新后数据校验不通过 ${entry.newFile.path} (modify)", 0)
+                                    }
+                                }
                             }
+
+                            window?.labelText = "正在进行收尾工作，请不要关闭程序"
+
+                            // 合并临时文件
+                            for ((index, newFile) in meta.newFiles.withIndex())
+                            {
+                                val rawFile = updateDir + newFile.path
+                                val tempFile = rawFile.parent + (rawFile.name + ".mcpatch-temporal.bin")
+
+                                if ((newFile.mode == ModificationMode.Fill || newFile.mode == ModificationMode.Modify)
+                                    && newFile.path !in skipped)
+                                {
+                                    tempFile.copy(rawFile)
+                                    tempFile.delete()
+                                }
+
+                                if (timer.timeout)
+                                {
+                                    window?.progressBarText = "$index/${meta.newFiles.size}"
+                                    window?.progressBarValue = index * 1000 / meta.newFiles.size
+                                }
+                            }
+
+                            // 删除更新包
+                            patchFile.delete()
 
                             // 更新版本号
                             currentVersionFile.content = tryEncodeVersionFile(version, encoded)
 
-                            // 显示更新记录
+                            // 处理更新记录
                             if (window != null && options.showChangelogs)
                             {
                                 changeLogs.add(Pair(version, meta.changeLogs.trim()))
@@ -150,7 +262,7 @@ class WorkThread(
                     {
                         val content = changeLogs.joinToString("\n\n\n") { cl ->
                             val title = cl.first
-                            val content = cl.second.ifEmpty { "已更新至此" }
+                            val content = cl.second.ifEmpty { "已更新" }
                             "========== $title ==========\n$content"
                         }
 
@@ -172,7 +284,7 @@ class WorkThread(
 
             // 输出一些调试信息
             if (downloadedVersions.isNotEmpty())
-                Log.info("successfully applied these versions：${downloadedVersions.map { it.first }}")
+                Log.info("successfully applied these versions：$downloadedVersions")
             else
                 Log.info("no missing versions and all files is up-to-date!")
 
@@ -184,18 +296,18 @@ class WorkThread(
 
     /**
      * 下载patch文件
-     * @param meta 版本的元信息
-     * @param version patch对应的版本号
+     * @param relativePath 要下载的文件的相对路径
+     * @param version 版本号
      * @param servers 可用服务器源
+     * @return 下载好的问题
      */
-    private fun downloadPatch(meta: VersionMetadata, version: String, servers: MultipleAvailableServers): File2
+    private fun downloadPatchFile(relativePath: String, version: String, servers: MultipleAvailableServers): File2
     {
-        val tempFile = File2(File.createTempFile("mc-patch-$version", ".bin"))
-
+        val tempFile = File2(File.createTempFile("mcpatch-$version", ".zip"))
         val sampler = SpeedSampler(3000)
         var time = System.currentTimeMillis()
 
-        servers.downloadFile("$version.mc-patch.bin", tempFile, meta.patchLength) { packageLength, bytesReceived, lengthExpected ->
+        servers.downloadFile(relativePath, tempFile) { packageLength, bytesReceived, lengthExpected ->
             if (window == null)
                 return@downloadFile
 
@@ -212,210 +324,11 @@ class WorkThread(
             val totalBytes = MiscUtils.convertBytes(lengthExpected)
             val speedText = MiscUtils.convertBytes(sampler.speed)
 
-            window.labelText = "正在下载资源更新包 $version"
             window.progressBarText = "$progressText%  -  $currentBytes/$totalBytes   -   $speedText/s"
             window.progressBarValue = (progress * 10).toInt()
         }
 
-        Log.debug("calculating the hash of the patch file")
-
-        // 校验patch文件
-        window?.labelText = "正在校验资源更新包 $version"
-        window?.progressBarValue = 0
-        window?.progressBarText = ""
-
-        fun onProgress(current: Long, total: Long)
-        {
-            window?.progressBarText = "${MiscUtils.convertBytes(current)} / ${MiscUtils.convertBytes(total)}"
-            window?.progressBarValue = (current * 1000 / total).toInt()
-        }
-
-        val corrupted = tempFile.length != meta.patchLength
-                || HashUtils.sha1(tempFile.file) { current, total -> onProgress(current, total) } != meta.patchHash
-        if (corrupted)
-            throw PatchCorruptedException(version, "二进制数据")
-
         return tempFile
-    }
-
-    /**
-     * 合并patch文件
-     * @param meta 版本的元信息
-     * @param version patch对应的版本号
-     * @param dir 更新的其实目录
-     * @param patchFile patch文件
-     */
-    private fun applyPatch(meta: VersionMetadata, version: String, dir: File2, patchFile: File2)
-    {
-        val timer = IntervalTimer(150)
-
-        window?.labelText = "正在应用更新包 $version"
-
-        patchFile.file.bufferedInputStream().use { patch ->
-            val pointer = ObjectLong(0)
-            val uiUpdatingTimer = IntervalTimer(150)
-
-            val skipped = mutableListOf<String>()
-
-            // 解压到临时文件里
-            for (newFile in meta.newFiles)
-            {
-                val rawFile = dir + newFile.path
-                val tempFile = rawFile.parent + (rawFile.name + ".mc-patch-temporal.bin")
-
-                rawFile.parent.mkdirs()
-
-                if (extractPatch(version, newFile, rawFile, tempFile, patch, pointer, uiUpdatingTimer))
-                    skipped.add(newFile.path)
-            }
-
-            // 应用临时文件
-            window?.labelText = "正在进行收尾工作"
-
-            for ((index, newFile) in meta.newFiles.withIndex())
-            {
-                val rawFile = dir + newFile.path
-                val tempFile = rawFile.parent + (rawFile.name + ".mc-patch-temporal.bin")
-
-                if ((newFile.mode == ModificationMode.Fill || newFile.mode == ModificationMode.Modify)
-                    && newFile.path !in skipped)
-                {
-                    // 合回最终文件，删除临时文件
-                    tempFile.copy(rawFile)
-                    tempFile.delete()
-                }
-
-                if (timer.timeout)
-                {
-                    window?.progressBarText = "$index/${meta.newFiles.size}"
-                    window?.progressBarValue = index * 1000 / meta.newFiles.size
-                }
-            }
-        }
-
-        patchFile.delete()
-    }
-
-    /**
-     * 解压patch
-     * @param version patch对应的版本号
-     * @param newFile 新文件的元信息
-     * @param rawFile 要被更新的原始文件
-     * @param tempFile 先解压到临时文件里
-     * @param patch patch文件的输入流
-     * @param pointer patch文件的读取指针
-     * @param uiUpdatingTimer UI更新计时器
-     * @return 是否跳过了更新
-     */
-    fun extractPatch(
-        version: String,
-        newFile: NewFile,
-        rawFile: File2,
-        tempFile: File2,
-        patch: InputStream,
-        pointer: ObjectLong,
-        uiUpdatingTimer: IntervalTimer,
-    ): Boolean {
-        when (newFile.mode)
-        {
-            ModificationMode.Empty -> {
-                Log.info("Empty: ${newFile.path}")
-
-                rawFile.delete()
-                rawFile.create()
-            }
-
-            ModificationMode.Fill -> {
-                Log.info("Fill: ${newFile.path}")
-
-                // 添加UI更新间隔
-                if (window != null && uiUpdatingTimer.timeout)
-                    window.progressBarText = newFile.path
-
-                // 如果本地文件已经存在，且hash一致，就跳过更新
-                if (rawFile.exists && HashUtils.sha1(rawFile.file) == newFile.newFileHash)
-                    return true
-
-                tempFile.file.bufferedOutputStream().use { temp ->
-                    patch.actuallySkip(newFile.blockOffset - pointer.value)
-
-                    // 拿到解压好的原始数据
-                    ByteArrayOutputStream().use { decompressed ->
-                        val bzip = CBZip2InputStream(patch)
-                        var time = System.currentTimeMillis() + 300 // 300ms后再开始更新
-                        bzip.copyAmountTo(decompressed, 1024 * 1024, newFile.rawLength) { copied, total ->
-                            if (System.currentTimeMillis() - time < 100)
-                                return@copyAmountTo
-                            time = System.currentTimeMillis()
-                            window?.progressBarValue = ((copied.toFloat() / total.toFloat()) * 1000).toInt()
-                        }
-
-                        // 检查解压后的二进制块
-                        if (HashUtils.sha1(decompressed.toByteArray()) != newFile.newFileHash)
-                            throw PatchCorruptedException(version, "解压后的二进制数据(${newFile.path})")
-
-                        decompressed.writeTo(temp)
-                    }
-
-                    pointer.value = newFile.blockOffset + newFile.blockLength
-                }
-            }
-
-            ModificationMode.Modify -> {
-                val notFound = !rawFile.exists
-                val notMatched = if (notFound) false else HashUtils.sha1(rawFile.file) != newFile.oldFileHash
-
-                // 文件不存在
-                val extraMsg = if (notFound) " (skip because the old file not found)" else
-                    if (notMatched) " (skip because hash not matched)" else ""
-
-                Log.info("Modify: ${newFile.path}$extraMsg")
-
-                if (extraMsg.isNotEmpty())
-                    return true
-
-                // 添加UI更新间隔
-                if (window != null && uiUpdatingTimer.timeout)
-                    window.progressBarText = newFile.path
-
-                // 将修补好的文件输出到临时文件里
-                rawFile.file.bufferedInputStream().use { old ->
-                    tempFile.file.bufferedOutputStream().use { temp ->
-                        patch.actuallySkip(newFile.blockOffset - pointer.value)
-
-                        // 拿到解压好的原始数据
-                        ByteArrayOutputStream().use { decompressed ->
-                            val bzip = CBZip2InputStream(patch)
-                            var time = System.currentTimeMillis() + 300 // 300ms后再开始更新
-                            bzip.copyAmountTo(decompressed, 1024 * 1024, newFile.rawLength) { copied, total ->
-                                if (System.currentTimeMillis() - time < 100)
-                                    return@copyAmountTo
-                                time = System.currentTimeMillis()
-                                window?.progressBarValue = ((copied.toFloat() / total.toFloat()) * 1000).toInt()
-                            }
-
-                            val decompressedBlock = decompressed.toByteArray()
-
-                            // 检查解压后的二进制块
-                            if (HashUtils.sha1(decompressedBlock) != newFile.patchFileHash)
-                                throw PatchCorruptedException(version, "解压后的二进制数据(${newFile.path})")
-
-                            ByteArrayInputStream(decompressedBlock).use { patchStream ->
-                                BsPatch().bspatch(old, patchStream, temp, old.available(), newFile.rawLength.toInt())
-                            }
-                        }
-
-                        pointer.value = newFile.blockOffset + newFile.blockLength
-                    }
-
-                    // 检查合并后的文件
-                    if (HashUtils.sha1(tempFile.file) != newFile.newFileHash)
-                        throw PatchCorruptedException(version, "合并后的文件数据(${newFile.path})")
-                }
-            }
-        }
-
-        return false
     }
 
     private fun tryDecodeVersionFile(text: String): Pair<String, Boolean>

@@ -24,13 +24,12 @@ abstract class AbstractServerSource : AutoCloseable
      * 下载一个二进制文件
      * @param relativePath 文件的相对路径
      * @param writeTo 写到哪里
-     * @param lengthExpected 文件的预期长度，用来报告下载进度
      * @param callback 报告下载进度的回调
      * @throws ConnectionRejectedException 当连接被拒绝时
      * @throws ConnectionInterruptedException 当连接意外断开时
      * @throws ConnectionTimeoutException 当发生超时时
      */
-    abstract fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long, callback: OnDownload)
+    abstract fun downloadFile(relativePath: String, writeTo: File2, callback: OnDownload)
 
     /**
      * 构建一个URI

@@ -60,6 +60,11 @@ data class GlobalOptions(
      * 重试次数
      */
     val retryTimes: Int,
+
+    /**
+     * 当遇到不存在的版本时是否自动从头开始下载所有版本
+      */
+    val autoRestartVersion: Boolean
 ) {
     companion object {
         /**
@@ -84,6 +89,7 @@ data class GlobalOptions(
                 httpResponseTimeout = getOption<Int>(map, "http-response-timeout") ?: 2000,
                 disableTheme = getOption<Boolean>(map, "disable-theme") ?: true,
                 retryTimes = getOption<Int>(map, "retry-times") ?: 5,
+                autoRestartVersion = getOption<Boolean>(map, "auto-restart-version") ?: true
             )
         }
 

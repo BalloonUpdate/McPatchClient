@@ -84,7 +84,7 @@ class WebdavSupport(serverString: String, val options: GlobalOptions)
         }
     }
 
-    override fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long, callback: OnDownload)
+    override fun downloadFile(relativePath: String, writeTo: File2, callback: OnDownload)
     {
         val url = buildURI(relativePath)
         Log.debug("webdav request on $url, write to: ${writeTo.path}")
@@ -92,7 +92,7 @@ class WebdavSupport(serverString: String, val options: GlobalOptions)
         return withRetrying(retryTimes, 1000) {
             try {
                 webdav.getAlt(url).first.use { remote ->
-                    val bodyLen = if (remote.length >= 0) remote.length else lengthExpected
+                    val bodyLen = if (remote.length >= 0) remote.length else 1024 * 1024 * 1024
 
                     writeTo.file.bufferedOutputStream(1024 * 1024).use { output ->
                         var bytesReceived: Long = 0

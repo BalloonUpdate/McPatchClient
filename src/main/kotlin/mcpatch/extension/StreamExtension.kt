@@ -1,21 +1,32 @@
 package mcpatch.extension
 
+import java.io.BufferedInputStream
 import java.io.InputStream
 import java.io.OutputStream
 
 object StreamExtension
 {
-    fun InputStream.actuallySkip(n: Long)
+    fun BufferedInputStream.actuallySkip(n: Long)
     {
-        var target = n
-        while (target > 0)
-            target -= skip(target)
+        var remains = n
+        while (remains > 0)
+            remains -= skip(remains)
     }
 
-    fun InputStream.copyAmountTo(
+    fun InputStream.actuallyRead(buf: ByteArray, offset: Int, amount: Int): Int
+    {
+        var remains = amount
+
+        while (remains > 0)
+            remains -= read(buf, offset + (amount - remains), remains)
+
+        return amount
+    }
+
+    fun InputStream.copyAmountTo1(
         out: OutputStream,
-        buffer: Int,
         amount: Long,
+        buffer: Int = 128 * 1024,
         callback: ((copied: Long, total: Long) -> Unit)? = null
     ): Long {
         var bytesCopied: Long = 0
@@ -26,7 +37,7 @@ object StreamExtension
 
         for (i in 0 until times)
         {
-            val bytes = read(buf)
+            val bytes = actuallyRead(buf, 0, buf.size)
             out.write(buf, 0, bytes)
             bytesCopied += bytes
             callback?.invoke(bytesCopied, amount)
@@ -34,7 +45,7 @@ object StreamExtension
 
         if (remain > 0)
         {
-            val bytes = read(buf, 0, remain.toInt())
+            val bytes = actuallyRead(buf, 0, remain.toInt())
             out.write(buf, 0, bytes)
             bytesCopied += bytes
             callback?.invoke(bytesCopied, amount)

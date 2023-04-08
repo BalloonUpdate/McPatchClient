@@ -61,7 +61,7 @@ class HttpSupport(serverString: String, options: GlobalOptions)
         }
     }
 
-    override fun downloadFile(relativePath: String, writeTo: File2, lengthExpected: Long, callback: OnDownload)
+    override fun downloadFile(relativePath: String, writeTo: File2, callback: OnDownload)
     {
         val url = buildURI(relativePath)
         Log.debug("http request on $url, write to: ${writeTo.path}")
@@ -78,7 +78,7 @@ class HttpSupport(serverString: String, options: GlobalOptions)
                         throw HttpResponseStatusCodeException(r.code, link, r.body?.string()?.limitLength())
 
                     val body = r.body!!
-                    val bodyLen = if (body.contentLength() != -1L) body.contentLength() else lengthExpected
+                    val bodyLen = if (body.contentLength() != -1L) body.contentLength() else 1024 * 1024 * 1024
                     val bufferSize = MiscUtils.chooseBufferSize(bodyLen)
 
                     body.source().use { input ->
