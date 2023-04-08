@@ -115,12 +115,19 @@ class WorkThread(
                             window?.labelText = "正在应用更新包 $version"
 
                             // 输出日志
+                            meta.moveFiles.forEach { Log.debug("move files: ${it.from} => ${it.to}") }
                             meta.oldFiles.forEach { Log.debug("old files: $it") }
                             meta.oldFolders.forEach { Log.debug("old dirs:  $it") }
                             meta.newFiles.forEach { Log.debug("new files: $it") }
                             meta.newFolders.forEach { Log.debug("new dirs:  $it") }
 
-                            // 删除旧文件和旧目录，还有创建新目录
+                            // 处理移动，删除和创建目录
+                            meta.moveFiles.forEach {
+                                val from = updateDir + it.from
+                                val to = updateDir + it.to
+                                if (from.exists)
+                                    from.move(to)
+                            }
                             meta.oldFiles.map { (updateDir + it) }.forEach { it.delete() }
                             meta.oldFolders.map { (updateDir + it) }.forEach { it.delete() }
                             meta.newFolders.map { (updateDir + it) }.forEach { it.mkdirs() }
