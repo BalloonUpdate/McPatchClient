@@ -125,15 +125,28 @@ class File2 : Iterable<File2>
         file.delete()
     }
 
-    fun copy(target: File2)
-    {
-        file.copyRecursively(target.file, overwrite = true)
-    }
-
     fun move(target: File2)
     {
-        copy(target)
-        target.delete()
+        if(!exists)
+            throw FileNotFoundException(path)
+
+        if (target.exists)
+            target.delete()
+
+        target.parent.mkdirs()
+
+        if (!file.renameTo(target.file))
+            throw RuntimeException("fail to move file from ${file.path} to ${target.path}")
+    }
+
+    fun copy(target: File2)
+    {
+        if(!exists)
+            throw FileNotFoundException(path)
+        if(isDirectory)
+            throw FileNotFoundException("is not a file: $path")
+
+        file.copyRecursively(target.file, overwrite = true)
     }
 
     val path: String get() = platformPath.replace("\\", "/")

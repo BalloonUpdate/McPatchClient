@@ -225,8 +225,7 @@ class WorkThread(
                                 if ((newFile.mode == ModificationMode.Fill || newFile.mode == ModificationMode.Modify)
                                     && newFile.path !in skipped)
                                 {
-                                    tempFile.copy(rawFile)
-                                    tempFile.delete()
+                                    tempFile.move(rawFile)
                                 }
 
                                 if (timer.timeout)
