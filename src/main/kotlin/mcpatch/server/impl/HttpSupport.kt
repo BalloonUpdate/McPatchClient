@@ -13,10 +13,16 @@ import mcpatch.util.File2
 import mcpatch.util.MiscUtils
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.internal.headersContentLength
+import java.io.RandomAccessFile
+import java.lang.Integer.max
 import java.net.ConnectException
 import java.net.SocketException
 import java.net.SocketTimeoutException
+import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
+import kotlin.math.min
 
 class HttpSupport(serverString: String, options: GlobalOptions)
     : AbstractServerSource()
@@ -63,44 +69,122 @@ class HttpSupport(serverString: String, options: GlobalOptions)
 
     override fun downloadFile(relativePath: String, writeTo: File2, callback: OnDownload)
     {
-        val url = buildURI(relativePath)
-        Log.debug("http request on $url, write to: ${writeTo.path}")
-
-        val link = url.replace("+", "%2B")
-
         writeTo.makeParentDirs()
-        val req = Request.Builder().url(link).build()
+
+        val url = buildURI(relativePath)
+        val link = url.replace("+", "%2B")
 
         return withRetrying(retryTimes, 1000) {
             try {
-                okClient.newCall(req).execute().use { r ->
+                // 测试是否支持断点续传
+                val testReq = Request.Builder().url(link).header("Range", "bytes=0-0").build()
+                val rangeSupported: Boolean
+                val length: Long
+
+                Log.debug("http range test request on $url")
+                okClient.newCall(testReq).execute().use { r ->
                     if(!r.isSuccessful)
                         throw HttpResponseStatusCodeException(r.code, link, r.body?.string()?.limitLength())
 
-                    val body = r.body!!
-                    val bodyLen = if (body.contentLength() != -1L) body.contentLength() else 1024 * 1024 * 1024
-                    val bufferSize = MiscUtils.chooseBufferSize(bodyLen)
+                    rangeSupported = r.headers["Accept-Ranges"] != null
+                    length = r.headersContentLength()
+                }
 
-                    body.source().use { input ->
-                        writeTo.file.bufferedOutputStream(bufferSize).use { output ->
-                            var bytesReceived: Long = 0
-                            var len: Int
-                            val buffer = ByteArray(bufferSize)
-                            val rrf = ReduceReportingFrequency()
+                if (rangeSupported)
+                {
+                    RandomAccessFile(writeTo.file, "rw").use { random ->
+                        val blockSize = 4 * 1024 * 1024
 
-                            while (input.read(buffer).also { len = it } != -1)
-                            {
-                                output.write(buffer, 0, len)
-                                bytesReceived += len
+                        // 生成blocks
+                        val blocks = LinkedBlockingQueue<LongRange>()
 
-                                val report = rrf.feed(len)
-                                if (report > 0)
-                                    callback(report, bytesReceived, bodyLen)
+                        for (i in 0 until length / blockSize)
+                            blocks.put(i * blockSize .. i * blockSize + blockSize)
+
+                        if (length % blockSize > 0)
+                            blocks.put(length * blockSize .. length - length * blockSize)
+
+                        val threads = max(1, min(4, blocks.size))
+                        val pool = Executors.newFixedThreadPool(threads)
+
+                        for (i in 0 until threads)
+                        {
+                            pool.execute {
+                                while (true)
+                                {
+                                    val block = blocks.poll() ?: return@execute
+
+                                    Log.debug("http request on $url range(${block.first} to ${block.last}), write to: ${writeTo.path}")
+                                    val req = Request.Builder().url(link).header("Range", "bytes=${block.first}-${block.last}").build()
+                                    okClient.newCall(req).execute().use { r ->
+                                        if(!r.isSuccessful)
+                                            throw HttpResponseStatusCodeException(r.code, link, r.body?.string()?.limitLength())
+
+                                        if (r.headers["Accept-Ranges"] == null)
+                                            throw HttpResponseStatusCodeException
+
+                                        val body = r.body!!
+                                        val bodyLen = if (body.contentLength() != -1L) body.contentLength() else 1024 * 1024 * 1024
+                                        val bufferSize = MiscUtils.chooseBufferSize(bodyLen)
+
+                                        body.source().use { input ->
+                                            writeTo.file.bufferedOutputStream(bufferSize).use { output ->
+                                                var bytesReceived: Long = 0
+                                                var len: Int
+                                                val buffer = ByteArray(bufferSize)
+                                                val rrf = ReduceReportingFrequency()
+
+                                                while (input.read(buffer).also { len = it } != -1)
+                                                {
+                                                    output.write(buffer, 0, len)
+                                                    bytesReceived += len
+
+                                                    val report = rrf.feed(len)
+                                                    if (report > 0)
+                                                        callback(report, bytesReceived, bodyLen)
+                                                }
+                                            }
+                                        }
+
+                                        return@withRetrying
+                                    }
+                                }
                             }
                         }
                     }
+                } else {
+                    // 正式发出请求
+                    Log.debug("http request on $url, write to: ${writeTo.path}")
+                    val req = Request.Builder().url(link).build()
+                    okClient.newCall(req).execute().use { r ->
+                        if(!r.isSuccessful)
+                            throw HttpResponseStatusCodeException(r.code, link, r.body?.string()?.limitLength())
 
-                    return@withRetrying
+                        val body = r.body!!
+                        val bodyLen = if (body.contentLength() != -1L) body.contentLength() else 1024 * 1024 * 1024
+                        val bufferSize = MiscUtils.chooseBufferSize(bodyLen)
+
+                        body.source().use { input ->
+                            writeTo.file.bufferedOutputStream(bufferSize).use { output ->
+                                var bytesReceived: Long = 0
+                                var len: Int
+                                val buffer = ByteArray(bufferSize)
+                                val rrf = ReduceReportingFrequency()
+
+                                while (input.read(buffer).also { len = it } != -1)
+                                {
+                                    output.write(buffer, 0, len)
+                                    bytesReceived += len
+
+                                    val report = rrf.feed(len)
+                                    if (report > 0)
+                                        callback(report, bytesReceived, bodyLen)
+                                }
+                            }
+                        }
+
+                        return@withRetrying
+                    }
                 }
             } catch (e: ConnectException) {
                 throw ConnectionInterruptedException(link, e.message ?: "")
