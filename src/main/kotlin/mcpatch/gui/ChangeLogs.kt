@@ -1,5 +1,6 @@
 package mcpatch.gui
 
+import com.github.kasuminova.GUI.SetupSwing
 import java.awt.BorderLayout
 import java.awt.event.KeyEvent
 import java.awt.event.KeyListener
@@ -41,6 +42,13 @@ class ChangeLogs
         } catch (_: Exception) {  }
     }
 
+    private var autoCloseDelay = 0
+
+    private var autoCloseThread = Thread {
+        Thread.sleep(autoCloseDelay.toLong())
+        close()
+    }
+
     init {
         window.isUndecorated = false
         window.contentPane = panel
@@ -78,9 +86,16 @@ class ChangeLogs
 
         changlogs.isEditable = false
         changlogs.text = cl
+        changlogs.lineWrap = true
         closeButton.addActionListener { close() }
 
         threadLock.start()
+    }
+
+    fun setAutoClose(time: Int)
+    {
+        autoCloseDelay = time
+        autoCloseThread.start()
     }
 
     fun close()
@@ -110,7 +125,10 @@ class ChangeLogs
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
+            SetupSwing.init()
+
             ChangeLogs()
+//                .setAutoClose(1000)
         }
     }
 }

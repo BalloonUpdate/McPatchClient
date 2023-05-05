@@ -39,6 +39,10 @@ show-finish-message: true
 # false：更新完成后不会弹出更新记录窗口而是继续下载下一个更新
 show-changelogs-message: true
 
+# 是否自动关闭更新记录窗口（无论是否操作）
+# 设置为0来禁用这个功能
+changelogs-auto-close: 0
+
 # 安静模式（默认不开启此选项）
 # true: 程序启动后不显示窗口，会在后台静默检查文件更新，如果没有更新就直接启动Minecraft，
 #       如果有更新再显示下载进度条窗口，此选项可以尽可能将更新助手的存在感降低（只在下载文件时显示窗口）

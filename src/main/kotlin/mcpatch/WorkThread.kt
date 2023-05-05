@@ -275,6 +275,8 @@ class WorkThread(
                         val cl = ChangeLogs()
                         cl.titleText = "更新记录"
                         cl.contentText = content
+                        if (options.autoCloseChangelogs > 0)
+                            cl.setAutoClose(options.autoCloseChangelogs)
                         cl.waitForClose()
                     }
                 }

@@ -64,7 +64,12 @@ data class GlobalOptions(
     /**
      * 当遇到不存在的版本时是否自动从头开始下载所有版本
       */
-    val autoRestartVersion: Boolean
+    val autoRestartVersion: Boolean,
+
+    /**
+     * 是否自动关闭更新记录窗口
+     */
+    val autoCloseChangelogs: Int,
 ) {
     companion object {
         /**
@@ -89,7 +94,8 @@ data class GlobalOptions(
                 httpResponseTimeout = getOption<Int>(map, "http-response-timeout") ?: 2000,
                 disableTheme = getOption<Boolean>(map, "disable-theme") ?: true,
                 retryTimes = getOption<Int>(map, "retry-times") ?: 5,
-                autoRestartVersion = getOption<Boolean>(map, "auto-restart-version") ?: true
+                autoRestartVersion = getOption<Boolean>(map, "auto-restart-version") ?: true,
+                autoCloseChangelogs = getOption<Int>(map, "changelogs-auto-close") ?: 0,
             )
         }
 
