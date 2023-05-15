@@ -36,7 +36,10 @@ class HttpSupport(serverString: String, options: GlobalOptions)
     override fun fetchText(relativePath: String): String
     {
         val url = buildURI(relativePath)
-        val req = Request.Builder().url(url).build()
+        val req = Request.Builder()
+            .url(url)
+            .addHeader("User-Agent", value = mcpatch.data.GlobalOptions.clientUserAgent)
+            .build()
         Log.debug("http request on $url")
 
         return withRetrying(retryTimes, 1000) {
