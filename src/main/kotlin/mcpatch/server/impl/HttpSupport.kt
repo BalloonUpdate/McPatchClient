@@ -1,5 +1,6 @@
 package mcpatch.server.impl
 
+import jdk.jfr.internal.Options
 import mcpatch.data.GlobalOptions
 import mcpatch.exception.ConnectionInterruptedException
 import mcpatch.exception.ConnectionRejectedException
@@ -18,7 +19,7 @@ import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 
-class HttpSupport(serverString: String, options: GlobalOptions)
+class HttpSupport(serverString: String, private val options: GlobalOptions)
     : AbstractServerSource()
 {
     val baseUrl = serverString
@@ -38,7 +39,7 @@ class HttpSupport(serverString: String, options: GlobalOptions)
         val url = buildURI(relativePath)
         val req = Request.Builder()
             .url(url)
-            .addHeader("User-Agent", value = mcpatch.data.GlobalOptions.clientUserAgent)
+            .addHeader("User-Agent", value = options.clientUserAgent)
             .build()
         Log.debug("http request on $url")
 
