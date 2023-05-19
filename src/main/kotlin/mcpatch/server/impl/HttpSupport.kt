@@ -1,6 +1,5 @@
 package mcpatch.server.impl
 
-import jdk.jfr.internal.Options
 import mcpatch.data.GlobalOptions
 import mcpatch.exception.ConnectionInterruptedException
 import mcpatch.exception.ConnectionRejectedException
