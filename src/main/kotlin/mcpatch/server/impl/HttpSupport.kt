@@ -18,7 +18,12 @@ import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 
+<<<<<<< HEAD
 class HttpSupport(serverString: String, options: GlobalOptions)
+=======
+@Suppress("DuplicatedCode")
+class HttpSupport(serverString: String, private val options: GlobalOptions)
+>>>>>>> 6b7aa93 (UA功能改进，released 1.1.3 (#21))
     : AbstractServerSource()
 {
     val baseUrl = serverString
@@ -38,7 +43,15 @@ class HttpSupport(serverString: String, options: GlobalOptions)
         val url = buildURI(relativePath)
         val req = Request.Builder()
             .url(url)
+<<<<<<< HEAD
             .addHeader("User-Agent", value = mcpatch.data.GlobalOptions.clientUserAgent)
+=======
+            .also {
+                //如果 UA 非空，则填入自定义 UA。
+                if (options.clientUserAgent.isNotEmpty())
+                    it.addHeader("User-Agent", this.options.clientUserAgent)
+            }
+>>>>>>> 6b7aa93 (UA功能改进，released 1.1.3 (#21))
             .build()
         Log.debug("http request on $url")
 
@@ -68,11 +81,21 @@ class HttpSupport(serverString: String, options: GlobalOptions)
     {
         val url = buildURI(relativePath)
         Log.debug("http request on $url, write to: ${writeTo.path}")
-
         val link = url.replace("+", "%2B")
 
         writeTo.makeParentDirs()
+<<<<<<< HEAD
         val req = Request.Builder().url(link).build()
+=======
+        val req = Request.Builder()
+            .url(link)
+            .also {
+                //同 43 行
+                if (options.clientUserAgent.isNotEmpty())
+                    it.addHeader("User-Agent", this.options.clientUserAgent)
+            }
+            .build()
+>>>>>>> 6b7aa93 (UA功能改进，released 1.1.3 (#21))
 
         return withRetrying(retryTimes, 1000) {
             try {

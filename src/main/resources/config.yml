@@ -34,7 +34,7 @@ server: http://127.0.0.1:6600
 
 # 用户标识符,用于鉴权和分流，仅供 http | https 自建更新服务器使用。
 # 如果您使用 MiniHttpServer 和 BalloonServer，则无需关心此项。
-client-UserAgent: McPatchClient
+client-UserAgent:
 
 # 是否禁用界面主题
 # true: 禁用界面主题，可以解决窗口出现无响应的问题！
