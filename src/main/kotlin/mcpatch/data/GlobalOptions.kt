@@ -7,9 +7,14 @@ import mcpatch.exception.ConfigFieldException
  */
 data class GlobalOptions(
     /**
-     * 服务端index.json文件的URL，用来获取服务端的文件并计算差异
+     * 服务端的更新用目录地址，用来获取服务端的文件并计算差异
      */
     val server: List<String>,
+
+    /**
+    * 客户端的 UserAgent，用于鉴权和分流
+    */
+    val clientUserAgent: String,
 
     /**
      * 是否在运行结束时显示提示框
@@ -32,7 +37,7 @@ data class GlobalOptions(
     val basePath: String,
 
     /**
-     * 是否开启不抛异常模式，以避免在更新失败时，不打断Minecraft游戏的启动
+     * 是否开启不抛异常模式，以避免在更新失败时，不打断 Minecraft 游戏的启动
      */
     val noThrowing: Boolean,
 
@@ -42,12 +47,12 @@ data class GlobalOptions(
     val quietMode: Boolean,
 
     /**
-     * 全局http连接超时（单位毫秒）
+     * 全局 http 连接超时（单位毫秒）
      */
     val httpConnectTimeout: Int,
 
     /**
-     * 全局http响应超时，也叫TTFB（单位毫秒）
+     * 全局 http 响应超时，也叫 TTFB（单位毫秒）
      */
     val httpResponseTimeout: Int,
 
@@ -73,7 +78,7 @@ data class GlobalOptions(
 ) {
     companion object {
         /**
-         * 从Map里创建一个GlobalOptions
+         * 从 Map 里创建一个 GlobalOptions
          */
         @JvmStatic
         fun CreateFromMap(map: Map<String, Any>): GlobalOptions
@@ -82,8 +87,10 @@ data class GlobalOptions(
             val serverAsString = getOption<String>(map, "server")
             val server = serverAsList ?: listOf(serverAsString ?: throw ConfigFieldException("server"))
 
+
             return GlobalOptions(
                 server = server,
+                clientUserAgent = (getOption<String>(map, "client-UserAgent") ?: "McPatchClient") as String,
                 showFinishMessage = getOption<Boolean>(map, "show-finish-message") ?: true,
                 showChangelogs = getOption<Boolean>(map, "show-changelogs-message") ?: true,
                 verionFile = getOption<String>(map, "version-file") ?: "mc-patch-version.txt",
