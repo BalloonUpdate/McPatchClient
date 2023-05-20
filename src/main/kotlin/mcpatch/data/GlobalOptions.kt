@@ -90,7 +90,7 @@ data class GlobalOptions(
 
             return GlobalOptions(
                 server = server,
-                clientUserAgent = (getOption<String>(map, "client-UserAgent") ?: "McPatchClient") as String,
+                clientUserAgent = (getOption<String>(map, "client-UserAgent") ?: "McPatchClient"),
                 showFinishMessage = getOption<Boolean>(map, "show-finish-message") ?: true,
                 showChangelogs = getOption<Boolean>(map, "show-changelogs-message") ?: true,
                 verionFile = getOption<String>(map, "version-file") ?: "mc-patch-version.txt",
