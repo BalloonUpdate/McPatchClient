@@ -26,14 +26,15 @@ import java.nio.channels.ClosedByInterruptException
 import java.util.*
 import java.util.jar.JarFile
 
-class McPatchClient {
+class McPatchClient
+{
     /**
      * McPatchClient主逻辑
      * @param graphicsMode 是否以图形模式启动（桌面环境通常以图形模式启动，安卓环境通常不以图形模式启动）
-     * @param hasStandaloneProgress 程序是否拥有独立的进程。从 JavaAgent 参数启动没有独立进程，双击启动有独立进程（java -jar xx.jar 也属于独立启动）
-     * @param externalConfigFile 可选的外部配置文件路径，如果为空则使用 progDir / config.yml
+     * @param hasStandaloneProgress 程序是否拥有独立的进程。从JavaAgent参数启动没有独立进程，双击启动有独立进程（java -jar xx.jar也属于独立启动）
+     * @param externalConfigFile 可选的外部配置文件路径，如果为空则使用 progDir/config.yml
      * @param enableLogFile 是否写入日志文件
-     * @param disableTheme 是否禁用主题，此选项和配置文件中的选项任意一个为 true 都会禁用主题
+     * @param disableTheme 是否禁用主题，此选项和配置文件中的选项任意一个为true都会禁用主题
      */
     fun run(
         graphicsMode: Boolean,
@@ -53,9 +54,9 @@ class McPatchClient {
                 Log.addHandler(FileHandler(Log, progDir + (if (graphicsMode) "mc-patch.log" else "mc-patch.log.txt")))
 
             val consoleLogLevel = if (Environment.IsProduction)
-                (if (graphicsMode || !enableLogFile) Log.LogLevel.DEBUG else Log.LogLevel.INFO)
-            else
-                Log.LogLevel.INFO
+                    (if (graphicsMode || !enableLogFile) Log.LogLevel.DEBUG else Log.LogLevel.INFO)
+                else
+                    Log.LogLevel.INFO
             Log.addHandler(ConsoleHandler(Log, consoleLogLevel))
             if (!hasStandaloneProgress)
                 Log.openTag("McPatchClient")
@@ -71,7 +72,7 @@ class McPatchClient {
             val osVersion = System.getProperty("os.version")
             Log.info("Updating Directory:   ${updateDir.path}")
             Log.info("Working Directory:    ${workDir.path}")
-            Log.info("Executable Directory: ${if (Environment.IsProduction) Environment.JarFile!!.parent.path else "dev-mode"}")
+            Log.info("Executable Directory: ${if(Environment.IsProduction) Environment.JarFile!!.parent.path else "dev-mode"}")
             Log.info("Application Version:  ${Environment.Version} (${Environment.GitCommit})")
             Log.info("Java virtual Machine: $jvmVender $jvmVersion")
             Log.info("Operating System: $osName $osVersion $osArch")
@@ -109,12 +110,13 @@ class McPatchClient {
             window?.destroy()
 
             // 处理工作线程里的异常
-            if (ex != null) {
+            if (ex != null)
+            {
                 if (//            ex !is SecurityException &&
                     ex !is InterruptedException &&
                     ex !is InterruptedIOException &&
-                    ex !is ClosedByInterruptException
-                ) {
+                    ex !is ClosedByInterruptException)
+                {
                     try {
                         Log.error(ex!!.javaClass.name)
                         Log.error(ex!!.stackTraceToString())
@@ -124,19 +126,21 @@ class McPatchClient {
                         println(e.stackTraceToString())
                     }
 
-                    if (graphicsMode) {
+                    if (graphicsMode)
+                    {
                         val appVersion = "${Environment.Version} (${Environment.GitCommit})"
                         val className = if (ex!! !is BaseException) ex!!.javaClass.name + "\n" else ""
-                        val errMessage =
-                            MiscUtils.stringBreak(className + (ex!!.message ?: "<No Exception Message>"), 80)
+                        val errMessage = MiscUtils.stringBreak(className + (ex!!.message ?: "<No Exception Message>"), 80)
                         val title = "发生错误 $appVersion"
                         var content = errMessage + "\n"
                         content += if (!hasStandaloneProgress) "点击\"是\"显示错误详情并崩溃Minecraft，" else "点击\"是\"显示错误详情并退出，"
                         content += if (!hasStandaloneProgress) "点击\"否\"继续启动Minecraft" else "点击\"否\"直接退出程序"
                         val choice = DialogUtils.confirm(title, content)
 
-                        if (!hasStandaloneProgress) {
-                            if (choice) {
+                        if (!hasStandaloneProgress)
+                        {
+                            if (choice)
+                            {
                                 DialogUtils.error("错误详情 $appVersion", ex!!.stackTraceToString())
                                 throw ex!!
                             }
@@ -189,11 +193,13 @@ class McPatchClient {
      * @param basedir 从哪个目录开始向上搜索
      * @return 包含.minecraft目录的父目录。如果找不到则返回Null
      */
-    fun searchDotMinecraft(basedir: File2): File2? {
+    fun searchDotMinecraft(basedir: File2): File2?
+    {
         try {
             var d = basedir
 
-            for (i in 0 until 7) {
+            for (i in 0 until 7)
+            {
                 if (d.contains(".minecraft"))
                     return d
 
@@ -213,23 +219,25 @@ class McPatchClient {
      * @throws ConfigFileNotFoundException 配置文件找不到时
      * @throws FailedToParsingException 配置文件无法解码时
      */
-    fun readConfig(externalConfigFile: File2): Map<String, Any> {
+    fun readConfig(externalConfigFile: File2): Map<String, Any>
+    {
         try {
             var content: String
-            if (!externalConfigFile.exists) {
-                if (!Environment.IsProduction)
+            if(!externalConfigFile.exists)
+            {
+                if(!Environment.IsProduction)
                     throw ConfigFileNotFoundException("config.yml")
 
                 JarFile(Environment.JarFile!!.path).use { jar ->
-                    val configFileInZip =
-                        jar.getJarEntry("config.yml") ?: throw ConfigFileNotFoundException("config.yml")
+                    val configFileInZip = jar.getJarEntry("config.yml") ?: throw ConfigFileNotFoundException("config.yml")
                     jar.getInputStream(configFileInZip).use { content = it.readBytes().decodeToString() }
                 }
             } else {
                 content = externalConfigFile.content
             }
 
-            if (content.startsWith(":")) {
+            if(content.startsWith(":"))
+            {
                 try {
                     content = Base64.getDecoder().decode(content.drop(1)).decodeToString()
                 } catch (e: IllegalArgumentException) {
@@ -253,7 +261,8 @@ class McPatchClient {
      * @throws ConfigFileNotFoundException 配置文件找不到时
      * @throws FailedToParsingException 配置文件无法解码时
      */
-    fun readLangs(): Map<String, String> {
+    fun readLangs(): Map<String, String>
+    {
         try {
             val content: String
             if (Environment.IsProduction)
@@ -273,9 +282,10 @@ class McPatchClient {
     /**
      * 获取进程的工作目录
      */
-    fun getWorkDirectory(): File2 {
+    fun getWorkDirectory(): File2
+    {
         return System.getProperty("user.dir").run {
-            if (Environment.IsProduction)
+            if(Environment.IsProduction)
                 File2(this)
             else
                 File2("$this${File.separator}testdir").also { it.mkdirs() }
@@ -286,8 +296,9 @@ class McPatchClient {
      * 获取需要更新的起始目录
      * @throws UpdateDirNotFoundException 当.minecraft目录搜索不到时
      */
-    fun getUpdateDirectory(workDir: File2, options: GlobalOptions): File2 {
-        return if (Environment.IsProduction) {
+    fun getUpdateDirectory(workDir: File2, options: GlobalOptions): File2
+    {
+        return if(Environment.IsProduction) {
             if (options.basePath != "") Environment.JarFile!!.parent + options.basePath
             else searchDotMinecraft(workDir) ?: throw UpdateDirNotFoundException()
         } else {
@@ -298,8 +309,9 @@ class McPatchClient {
     /**
      * 获取Jar文件所在的目录
      */
-    fun getProgramDirectory(workDir: File2): File2 {
-        return if (Environment.IsProduction) Environment.JarFile!!.parent else workDir
+    fun getProgramDirectory(workDir: File2): File2
+    {
+        return if(Environment.IsProduction) Environment.JarFile!!.parent else workDir
     }
 
     companion object {
@@ -317,7 +329,8 @@ class McPatchClient {
             val libpath = System.getProperty("java.library.path").split(File.separator).first()
             val jar = Environment.JarFile!!.platformPath
 
-            fun appendPath(env: MutableMap<String, String>): MutableMap<String, String> {
+            fun appendPath(env: MutableMap<String, String>): MutableMap<String, String>
+            {
                 val path = env["PATH"] ?: ""
                 env["PATH"] = path + (if (path.trim().isNotEmpty()) File.separator else "") + libpath
                 return env
@@ -353,17 +366,18 @@ class McPatchClient {
          * 从JavaAgent启动
          */
         @JvmStatic
-        fun premain(agentArgs: String?, ins: Instrumentation?) {
+        fun premain(agentArgs: String?, ins: Instrumentation?)
+        {
             val autoUseGraphicsMode = agentArgs != "windowless" && Desktop.isDesktopSupported()
 
             if (!Environment.IsProduction)
                 throw RuntimeException("McPatchClient must be in production mode to be started in JavaAgent mode")
 
-            val legacyStart =
-                JarFile(Environment.JarFile!!.path).use { jar -> jar.getJarEntry(".no-standalone-process") != null }
+            val legacyStart = JarFile(Environment.JarFile!!.path).use { jar -> jar.getJarEntry(".no-standalone-process") != null }
 
             try {
-                if (legacyStart) {
+                if (legacyStart)
+                {
                     println("Use legacy starting up method")
                     throw PermissionDeniedException()
                 }
@@ -397,15 +411,14 @@ class McPatchClient {
          * 独立启动
          */
         @JvmStatic
-        fun main(args: Array<String>) {
+        fun main(args: Array<String>)
+        {
             val autoGraphicsMode = !(args.isNotEmpty() && args[0] == "windowless") && Desktop.isDesktopSupported()
 
             McPatchClient().run(
-                graphicsMode = (System.getenv("MC_PATCH_CLIENT_GRAPHICS_MODE")
-                    ?: "").ifEmpty { autoGraphicsMode.toString() } == "true",
+                graphicsMode = (System.getenv("MC_PATCH_CLIENT_GRAPHICS_MODE") ?: "").ifEmpty { autoGraphicsMode.toString() } == "true",
                 hasStandaloneProgress = (System.getenv("MC_PATCH_CLIENT_STANDALONE") ?: "true") == "true",
-                externalConfigFile = (System.getenv("MC_PATCH_CLIENT_EXTERNAL_CONFIG")
-                    ?: "").run { if (this.isEmpty()) null else File2(this) },
+                externalConfigFile = (System.getenv("MC_PATCH_CLIENT_EXTERNAL_CONFIG") ?: "").run { if (this.isEmpty()) null else File2(this) },
                 enableLogFile = (System.getenv("MC_PATCH_CLIENT_ENABLE_LOG_FILE") ?: "true") == "true",
                 disableTheme = (System.getenv("MC_PATCH_CLIENT_DISABLE_THEME") ?: "false") == "true"
             )
@@ -418,7 +431,8 @@ class McPatchClient {
          * @return 是否有文件更新，如果有返回true。其它情况返回false
          */
         @JvmStatic
-        fun modloader(enableLogFile: Boolean, disableTheme: Boolean): Boolean {
+        fun modloader(enableLogFile: Boolean, disableTheme: Boolean): Boolean
+        {
             val result = McPatchClient().run(
                 graphicsMode = Desktop.isDesktopSupported(),
                 hasStandaloneProgress = false,
