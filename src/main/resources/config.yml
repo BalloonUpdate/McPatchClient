@@ -14,7 +14,7 @@
 #        webdav://用户 :密码 :   地址   :端口
 #     1. webdav://user:pass:127.0.0.1:80 （默认形式，webdav 使用 http 协议）
 #
-#        webdavs://用户 :密码 :  地址   :端口/ 目录 / 下级目录
+#        webdavs://用户 :密码 :  地址   :端口/ 目录  / 下级目录
 #     2. webdavs://user:pass:127.0.0.1:443/folder/subfolder （子目录形式，webdav使用https协议，注意https默认端口为443，而非80）
 #        说明: user是用户名，pass是密码，均不可省略，127.0.0.1 是主机地址，80 和 443 是端口（端口不可省略），subfolder是可选的子目录。
 #
