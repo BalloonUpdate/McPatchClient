@@ -18,6 +18,7 @@ import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 
+@Suppress("DuplicatedCode")
 class HttpSupport(serverString: String, private val options: GlobalOptions)
     : AbstractServerSource()
 {
@@ -38,7 +39,11 @@ class HttpSupport(serverString: String, private val options: GlobalOptions)
         val url = this.buildURI(relativePath)
         val req = Request.Builder()
             .url(url)
-            .addHeader("User-Agent", value = this.options.clientUserAgent)
+            .also {
+                //如果 UA 非空，则填入自定义 UA。
+                if (options.clientUserAgent.isNotEmpty())
+                    it.addHeader("User-Agent", this.options.clientUserAgent)
+            }
             .build()
         Log.debug("http request on $url")
 
@@ -68,13 +73,16 @@ class HttpSupport(serverString: String, private val options: GlobalOptions)
     {
         val url = this.buildURI(relativePath)
         Log.debug("http request on $url, write to: ${writeTo.path}")
-
         val link = url.replace("+", "%2B")
 
         writeTo.makeParentDirs()
         val req = Request.Builder()
             .url(link)
-            .addHeader("User-Agent", value = this.options.clientUserAgent)
+            .also {
+                //同 43 行
+                if (options.clientUserAgent.isNotEmpty())
+                    it.addHeader("User-Agent", this.options.clientUserAgent)
+            }
             .build()
 
         return this.withRetrying(this.retryTimes, 1000) {
