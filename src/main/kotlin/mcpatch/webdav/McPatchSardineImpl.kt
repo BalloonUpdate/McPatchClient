@@ -40,7 +40,7 @@ fun CreateIgnoreVerifySsl(): SSLContext {
     return context
 }
 
-class McPatchSardineImpl(username: String, password: String, options: GlobalOptions)
+class McPatchSardineImpl(username: String, password: String, val options: GlobalOptions)
     : SardineImpl(
         HttpClientBuilder.create()
             .setDefaultSocketConfig(SocketConfig.custom()
@@ -59,6 +59,12 @@ class McPatchSardineImpl(username: String, password: String, options: GlobalOpti
     fun getAlt(url: String): Pair<ContentLengthInputStream, HttpResponse>
     {
         val get = HttpGet(url)
+
+        if (options.clientUserAgent.isNotEmpty())
+            get.addHeader("User-Agent", this.options.clientUserAgent)
+
+        for (header in options.httpHeaders)
+            get.addHeader(header.key, header.value)
 
         // Must use #execute without handler, otherwise the entity is consumed
         // already after the handler exits.

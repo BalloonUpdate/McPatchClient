@@ -18,39 +18,30 @@ import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.util.concurrent.TimeUnit
 
-
-@Suppress("DuplicatedCode")
-class HttpSupport(serverString: String, private val options: GlobalOptions)
+class HttpSupport(serverString: String, val options: GlobalOptions)
     : AbstractServerSource()
 {
     val baseUrl = serverString
-        .run { if (!this.endsWith("/")) "$this/" else this }
-        .run { this.substring(0, this.lastIndexOf("/") + 1) }
+        .run { if (!endsWith("/")) "$this/" else this }
+        .run { substring(0, lastIndexOf("/") + 1) }
 
     val okClient = OkHttpClient.Builder()
-        .connectTimeout(this.options.httpConnectTimeout.toLong(), TimeUnit.MILLISECONDS)
-        .readTimeout(this.options.httpResponseTimeout.toLong(), TimeUnit.MILLISECONDS)
-        .writeTimeout(this.options.httpResponseTimeout.toLong(), TimeUnit.MILLISECONDS)
+        .connectTimeout(options.httpConnectTimeout.toLong(), TimeUnit.MILLISECONDS)
+        .readTimeout(options.httpResponseTimeout.toLong(), TimeUnit.MILLISECONDS)
+        .writeTimeout(options.httpResponseTimeout.toLong(), TimeUnit.MILLISECONDS)
         .build()
 
-    val retryTimes: Int = this.options.retryTimes
+    val retryTimes: Int = options.retryTimes
 
     override fun fetchText(relativePath: String): String
     {
-        val url = this.buildURI(relativePath)
-        val req = Request.Builder()
-            .url(url)
-            .also {
-                //如果 UA 非空，则填入自定义 UA。
-                if (options.clientUserAgent.isNotEmpty())
-                    it.addHeader("User-Agent", this.options.clientUserAgent)
-            }
-            .build()
+        val url = buildURI(relativePath)
+        val req = buildRequest(url)
         Log.debug("http request on $url")
 
-        return this.withRetrying(this.retryTimes, 1000) {
+        return withRetrying(retryTimes, 1000) {
             try {
-                this.okClient.newCall(req).execute().use { r ->
+                okClient.newCall(req).execute().use { r ->
                     if (!r.isSuccessful) {
                         val body = r.body?.string()?.limitLength()
                         throw HttpResponseStatusCodeException(r.code, url, body)
@@ -72,22 +63,17 @@ class HttpSupport(serverString: String, private val options: GlobalOptions)
 
     override fun downloadFile(relativePath: String, writeTo: File2, callback: OnDownload)
     {
-        val url = this.buildURI(relativePath)
+        val url = buildURI(relativePath)
         Log.debug("http request on $url, write to: ${writeTo.path}")
+
         val link = url.replace("+", "%2B")
 
         writeTo.makeParentDirs()
-        val req = Request.Builder()
-            .url(link)
-            .also {
-                //同 43 行
-                if (options.clientUserAgent.isNotEmpty())
-                    it.addHeader("User-Agent", this.options.clientUserAgent)
-            }
-            .build()
-        return this.withRetrying(this.retryTimes, 1000) {
+        val req = buildRequest(url)
+
+        return withRetrying(retryTimes, 1000) {
             try {
-                this.okClient.newCall(req).execute().use { r ->
+                okClient.newCall(req).execute().use { r ->
                     if(!r.isSuccessful)
                         throw HttpResponseStatusCodeException(r.code, link, r.body?.string()?.limitLength())
 
@@ -102,7 +88,8 @@ class HttpSupport(serverString: String, private val options: GlobalOptions)
                             val buffer = ByteArray(bufferSize)
                             val rrf = ReduceReportingFrequency()
 
-                            while (input.read(buffer).also { len = it } != -1) {
+                            while (input.read(buffer).also { len = it } != -1)
+                            {
                                 output.write(buffer, 0, len)
                                 bytesReceived += len
 
@@ -129,13 +116,26 @@ class HttpSupport(serverString: String, private val options: GlobalOptions)
 
     override fun buildURI(relativePath: String): String
     {
-        return this.baseUrl + relativePath
+        return baseUrl + relativePath
     }
 
     override fun close() { }
 
     private fun String.limitLength(limit: Int = 500): String
     {
-        return if (this.length > limit) this.substring(0, limit) + "\n..." else this
+        return if (length > limit) substring(0, limit) + "\n..." else this
+    }
+
+    private fun buildRequest(url: String): Request
+    {
+        val req = Request.Builder().url(url)
+
+        if (options.clientUserAgent.isNotEmpty())
+            req.addHeader("User-Agent", this.options.clientUserAgent)
+
+        for (header in options.httpHeaders)
+            req.addHeader(header.key, header.value)
+        
+        return req.build()
     }
 }

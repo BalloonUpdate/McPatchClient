@@ -17,6 +17,11 @@ data class GlobalOptions(
     val clientUserAgent: String,
 
     /**
+     * 自定义Http协议头
+     */
+    val httpHeaders: Map<String, String>,
+
+    /**
      * 是否在运行结束时显示提示框
      */
     val showFinishMessage: Boolean,
@@ -81,8 +86,7 @@ data class GlobalOptions(
          * 从 Map 里创建一个 GlobalOptions
          */
         @JvmStatic
-        fun CreateFromMap(map: Map<String, Any>): GlobalOptions
-        {
+        fun CreateFromMap(map: Map<String, Any>): GlobalOptions {
             val serverAsList = getOption<List<String>>(map, "server")
             val serverAsString = getOption<String>(map, "server")
             val server = serverAsList ?: listOf(serverAsString ?: throw ConfigFieldException("server"))
@@ -90,28 +94,28 @@ data class GlobalOptions(
 
             return GlobalOptions(
                 server = server,
-                clientUserAgent = getOption<String>(map, "client-UserAgent") ?: "",
-                showFinishMessage = getOption<Boolean>(map, "show-finish-message") ?: true,
-                showChangelogs = getOption<Boolean>(map, "show-changelogs-message") ?: true,
-                verionFile = getOption<String>(map, "version-file") ?: "mc-patch-version.txt",
-                basePath = getOption<String>(map, "base-path") ?: "",
-                noThrowing = getOption<Boolean>(map, "no-throwing") ?: false,
-                quietMode = getOption<Boolean>(map, "quiet-mode") ?: false,
-                httpConnectTimeout = getOption<Int>(map, "http-connect-timeout") ?: 3000,
-                httpResponseTimeout = getOption<Int>(map, "http-response-timeout") ?: 2000,
-                disableTheme = getOption<Boolean>(map, "disable-theme") ?: true,
-                retryTimes = getOption<Int>(map, "retry-times") ?: 5,
-                autoRestartVersion = getOption<Boolean>(map, "auto-restart-version") ?: true,
-                autoCloseChangelogs = getOption<Int>(map, "changelogs-auto-close") ?: 0,
+                clientUserAgent = getOption(map, "client-UserAgent") ?: "",
+                httpHeaders = getOption<Map<String, String>>(map, "http-headers")?.mapValues { (it.value as Any).toString() } ?: mapOf(),
+                showFinishMessage = getOption(map, "show-finish-message") ?: true,
+                showChangelogs = getOption(map, "show-changelogs-message") ?: true,
+                verionFile = getOption(map, "version-file") ?: "mc-patch-version.txt",
+                basePath = getOption(map, "base-path") ?: "",
+                noThrowing = getOption(map, "no-throwing") ?: false,
+                quietMode = getOption(map, "quiet-mode") ?: false,
+                httpConnectTimeout = getOption(map, "http-connect-timeout") ?: 3000,
+                httpResponseTimeout = getOption(map, "http-response-timeout") ?: 2000,
+                disableTheme = getOption(map, "disable-theme") ?: true,
+                retryTimes = getOption(map, "retry-times") ?: 5,
+                autoRestartVersion = getOption(map, "auto-restart-version") ?: true,
+                autoCloseChangelogs = getOption(map, "changelogs-auto-close") ?: 0,
             )
         }
 
         /**
          * 从配置文件里读取东西，并校验
          */
-        inline fun <reified Type> getOption(config: Map<String, Any>, key: String): Type?
-        {
-            return if(key in config && config[key] != null && config[key] is Type) config[key] as Type else null
+        inline fun <reified Type> getOption(config: Map<String, Any>, key: String): Type? {
+            return if (key in config && config[key] != null && config[key] is Type) config[key] as Type else null
         }
     }
 }
