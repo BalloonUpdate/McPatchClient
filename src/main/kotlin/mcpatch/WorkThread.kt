@@ -214,7 +214,7 @@ class WorkThread(
                                 }
                             }
 
-                            window?.labelText = "正在进行收尾工作，请不要关闭程序"
+                            window?.labelText = "正在合并更新数据，请不要关闭程序"
 
                             // 合并临时文件
                             for ((index, newFile) in meta.newFiles.withIndex())
@@ -235,11 +235,17 @@ class WorkThread(
                                 }
                             }
 
-                            // 删除更新包
-                            patchFile.delete()
+                            window?.labelText = "正在更新版本号"
 
                             // 更新版本号
                             currentVersionFile.content = tryEncodeVersionFile(version, encoded)
+
+                            window?.labelText = "正在做最后的清理工作"
+
+                            // 删除更新包
+                            patchFile.delete()
+
+                            window?.labelText = "更新完成"
 
                             // 处理更新记录
                             if (window != null && options.showChangelogs)
