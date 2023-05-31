@@ -2,6 +2,10 @@ package mcpatch.util
 
 object MiscUtils
 {
+    const val kb = 1024
+    const val mb = 1024 * 1024
+    const val gb = 1024 * 1024 * 1024
+
     /**
      * 拆分较长的字符串到多行里
      */
@@ -36,15 +40,13 @@ object MiscUtils
         }
     }
 
+
     /**
      * 根据文件大小选择合适的缓冲区大小
      * @param size 文件大小
      * @return 缓冲区大小
      */
     fun chooseBufferSize(size: Long): Int {
-        val kb = 1024
-        val mb = 1024 * 1024
-        val gb = 1024 * 1024 * 1024
         return when {
             size < 1 * mb   -> 16 * kb
             size < 2 * mb   -> 32 * kb
@@ -67,9 +69,6 @@ object MiscUtils
      * @return 报告大小
      */
     fun chooseReportSize(size: Long): Int {
-        val kb = 1024
-        val mb = 1024 * 1024
-        val gb = 1024 * 1024 * 1024
         return when {
             size < 32 * kb  -> 8 * kb
             size < 128 * kb -> 16 * kb
