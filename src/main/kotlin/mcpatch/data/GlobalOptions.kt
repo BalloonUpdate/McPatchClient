@@ -7,7 +7,7 @@ import mcpatch.exception.ConfigFieldException
  */
 data class GlobalOptions(
     /**
-     * 服务端的更新用目录地址，用来获取服务端的文件并计算差异
+     * 更新服务器的地址列表，多个地址之间互为备份
      */
     val server: List<String>,
 
