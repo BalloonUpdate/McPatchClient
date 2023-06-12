@@ -7,9 +7,6 @@ import mcpatch.server.impl.HttpSupport
 import mcpatch.server.impl.SFTPSupport
 import mcpatch.server.impl.WebdavSupport
 import mcpatch.util.File2
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
 
 /**
  * 代表一个多服务器地址支持的数据源
@@ -31,41 +28,12 @@ class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
     }.also { if (it.isEmpty()) throw NoServerException() }
 
     /**
-     * 获取一个JsonObject
-     * @param relativePath 文件的相对路径
-     * @param name 文件的描述
-     */
-    fun fetchJsonObject(relativePath: String, name: String): JSONObject
-    {
-        val (body, source) = fetchTextInternal(relativePath)
-
-        try {
-            return JSONObject(body)
-        } catch (e: JSONException) {
-            val uri = source.buildURI(relativePath)
-            throw FailedToParsingException(name, "json", "$uri ${e.message}")
-        }
-    }
+     * 当前正在使用的源的索引编号
+      */
+    private var currentServerIndex = 0
 
     /**
-     * JsonArray
-     * @param relativePath 文件的相对路径
-     * @param name 文件的描述
-     */
-    fun fetchJsonArray(relativePath: String, name: String): JSONArray
-    {
-        val (body, source) = fetchTextInternal(relativePath)
-
-        try {
-            return JSONArray(body)
-        } catch (e: JSONException) {
-            val uri = source.buildURI(relativePath)
-            throw FailedToParsingException(name, "json", "$uri ${e.message}")
-        }
-    }
-
-    /**
-     * 获取文本文件的内容
+     * 下载文本文件
      * @param relativePath 文本文件的相对路径
      * @return 文本内容
      * @throws ConnectionRejectedException 当连接被拒绝时
@@ -73,12 +41,10 @@ class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
      * @throws ConnectionTimeoutException 当发生超时时
      */
     fun fetchText(relativePath: String): String
-    {
-        return fetchTextInternal(relativePath).first
-    }
+        = fallback { it.fetchText(relativePath) }
 
     /**
-     * 下载一个二进制文件
+     * 下载二进制文件
      * @param relativePath 文件的相对路径
      * @param writeTo 写到哪里
      * @param callback 报告下载进度的回调
@@ -87,43 +53,27 @@ class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
      * @throws ConnectionTimeoutException 当发生超时时
      */
     fun downloadFile(relativePath: String, writeTo: File2, callback: OnDownload)
-    {
-        downloadFileInternal(relativePath, writeTo, callback)
-    }
+        = fallback { it.downloadFile(relativePath, writeTo, callback) }
 
-    private fun fetchTextInternal(relativePath: String): Pair<String, AbstractServerSource>
+    /**
+     * 自动切换服务器源，如果遇到网络失败则直接切换到下一个源
+     */
+    private inline fun <T> fallback(fn: (server: AbstractServerSource) -> T): T
     {
         var ex: Throwable? = null
 
-        for (source in servers)
+        for (i in 0 until (servers.size - currentServerIndex))
         {
+            val server = servers[currentServerIndex]
+
             ex = try {
-                return Pair(source.fetchText(relativePath), source)
+                return fn(server)
             } catch (e: Throwable) { e }
 
-            if (servers.size > 1)
+            if (currentServerIndex + 1 < servers.size)
                 Log.error(ex!!.toString())
-        }
 
-        throw ex!!
-    }
-
-    private fun downloadFileInternal(
-        relativePath: String,
-        writeTo: File2,
-        callback: OnDownload
-    ): AbstractServerSource {
-        var ex: Throwable? = null
-
-        for (source in servers)
-        {
-            ex = try {
-                source.downloadFile(relativePath, writeTo, callback)
-                return source
-            } catch (e: Throwable) { e }
-
-            if (servers.size > 1)
-                Log.error(ex!!.toString())
+            currentServerIndex += 1
         }
 
         throw ex!!

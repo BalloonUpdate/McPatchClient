@@ -9,23 +9,10 @@ import java.awt.event.WindowEvent
 import javax.swing.*
 import javax.swing.border.EmptyBorder
 
-val cl = "外国政要有意密集来访，反映了中国所坚持的开放、协商、共赢的态度与发展方向，受到了世界的认可。\n" +
-        "\n" +
-        "受中国国务院总理李强邀请，新加坡总理李显龙27日正式开启为期六天的访华之旅。这是新冠肺炎疫情三年以来，李显龙首次访华。期间，他将到访广东广州、海南博鳌和北京三地。\n" +
-        "\n" +
-        "在李显龙“打头阵”后，中国或将迎来新一轮主场外交热潮。除了因肺炎而不得不推迟访华的巴西总统卢拉，西班牙首相桑切斯、法国总统马克龙、欧盟委员会主席冯德莱恩、意大利总理梅洛尼等欧洲政要也纷纷释放出寻求访华的信号。\n" +
-        "\n" +
-        "不远万里“排队”奔赴中国，他们究竟为何而来？\n" +
-        "\n" +
-        "李显龙此访有三点备受关注\n" +
-        "\n" +
-        "前不久，李显龙在新加坡接受了中国中央电视台的采访。访谈中，他直言中新“两国的关系非常好”，并表示“两国有互信，能够相互理解”。\n" +
-        "\n" +
-        "没过几天，新加坡总理办公室就发布重磅公告，李显龙将于3月27日至4月1日对中国进行为期六天的国事访问。\n" +
-        "\n" +
-        "公告显示，李显龙将在广东会见部分新加坡籍人士，在海南出席博鳌亚洲论坛2023年年会开幕式并发表讲话，在北京与中国领导人见面。\n" +
-        "\n" +
-        "李显龙此次访华之旅也备受媒体关注。“这是疫情发生以来，李显龙首次访华。”新加坡《联合早报》报道称，“在访问中国前，李显龙表示‘各国不得不承认，中国如今在全球舞台上正发挥着更大的作用’。”"
+val testText = "Java平台由Java虚拟机(Java Virtual Machine)和Java 应用编程接口(Application Programming Interface、简称API)构成。\n" +
+        "Java 应用编程接口为Java应用提供了一个独立于操作系统的标准接口，可分为基本部分和扩展部分。\n" +
+        "在硬件或操作系统平台上安装一个Java平台之后，Java应用程序就可运行。Java平台已经嵌入了几乎所有的操作系统。\n" +
+        "这样Java程序可以只编译一次，就可以在各种系统中运行。Java应用编程接口已经从1.1x版发展到1.2版。常用的Java平台基于Java1.8，最近版本为Java19。"
 
 class ChangeLogs
 {
@@ -85,7 +72,7 @@ class ChangeLogs
         panel2.add(closeButton, BorderLayout.EAST)
 
         changlogs.isEditable = false
-        changlogs.text = cl
+        changlogs.text = testText
         changlogs.lineWrap = true
         closeButton.addActionListener { close() }
 
@@ -125,7 +112,7 @@ class ChangeLogs
     companion object {
         @JvmStatic
         fun main(args: Array<String>) {
-            SetupSwing.init()
+//            SetupSwing.init()
 
             ChangeLogs()
 //                .setAutoClose(1000)
