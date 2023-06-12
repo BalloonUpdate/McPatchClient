@@ -15,7 +15,7 @@ import mcpatch.gui.McPatchWindow
 import mcpatch.localization.LangNodes
 import mcpatch.localization.Localization
 import mcpatch.logging.Log
-import mcpatch.server.MultipleAvailableServers
+import mcpatch.server.MultipleServers
 import mcpatch.util.*
 import java.io.File
 import java.util.*
@@ -37,7 +37,7 @@ class WorkThread(
         if (!options.quietMode)
             window?.show()
 
-        MultipleAvailableServers(options).use { servers ->
+        MultipleServers(options).use { servers ->
             val currentVersionFile = progDir + options.verionFile
             val (versionFileContent, encoded) = if (currentVersionFile.exists) tryDecodeVersionFile(currentVersionFile.content) else Pair("", false)
 
@@ -315,7 +315,7 @@ class WorkThread(
      * @param servers 可用服务器源
      * @return 下载好的问题
      */
-    private fun downloadPatchFile(relativePath: String, version: String, servers: MultipleAvailableServers): File2
+    private fun downloadPatchFile(relativePath: String, version: String, servers: MultipleServers): File2
     {
         val tempFile = File2(File.createTempFile("mcpatch-$version", ".zip"))
         val sampler = SpeedSampler(3000)

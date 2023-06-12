@@ -11,7 +11,7 @@ import mcpatch.util.File2
 /**
  * 代表一个多服务器地址支持的数据源
  */
-class MultipleAvailableServers(options: GlobalOptions) : AutoCloseable
+class MultipleServers(options: GlobalOptions) : AutoCloseable
 {
     /**
      * 所有可用服务器
