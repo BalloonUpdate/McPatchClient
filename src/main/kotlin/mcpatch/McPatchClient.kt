@@ -32,7 +32,7 @@ class McPatchClient
      * McPatchClient主逻辑
      * @param graphicsMode 是否以图形模式启动（桌面环境通常以图形模式启动，安卓环境通常不以图形模式启动）
      * @param hasStandaloneProgress 程序是否拥有独立的进程。从JavaAgent参数启动没有独立进程，双击启动有独立进程（java -jar xx.jar也属于独立启动）
-     * @param externalConfigFile 可选的外部配置文件路径，如果为空则使用 progDir/config.yml
+     * @param externalConfigFile 可选的外部配置文件路径，如果为空则使用 progDir/mc-patch-config.yml 或者 progDir/config.yml
      * @param enableLogFile 是否写入日志文件
      * @param disableTheme 是否禁用主题，此选项和配置文件中的选项任意一个为true都会禁用主题
      */
@@ -46,7 +46,7 @@ class McPatchClient
         try {
             val workDir = getWorkDirectory()
             val progDir = getProgramDirectory(workDir)
-            val options = GlobalOptions.CreateFromMap(readConfig(externalConfigFile ?: (progDir + "config.yml")))
+            val options = GlobalOptions.CreateFromMap(readConfig(externalConfigFile ?: (progDir + "mc-patch-config.yml"), progDir + "config.yml"))
             val updateDir = getUpdateDirectory(workDir, options)
 
             // 初始化日志系统
@@ -214,26 +214,32 @@ class McPatchClient
 
     /**
      * 从外部/内部读取配置文件并将内容返回（当外部不可用时会从内部读取）
-     * @param externalConfigFile 外部配置文件
+     * @param external1 首选外部配置文件
+     * @param external2 备用外部配置文件
      * @return 解码后的配置文件对象
      * @throws ConfigFileNotFoundException 配置文件找不到时
      * @throws FailedToParsingException 配置文件无法解码时
      */
-    fun readConfig(externalConfigFile: File2): Map<String, Any>
+    fun readConfig(external1: File2, external2: File2): Map<String, Any>
     {
         try {
             var content: String
-            if(!externalConfigFile.exists)
+
+            if (external1.exists)
             {
+                content = external1.content
+            } else if (external2.exists) {
+                content = external2.content
+            } else {
                 if(!Environment.IsProduction)
-                    throw ConfigFileNotFoundException("config.yml")
+                    throw ConfigFileNotFoundException("mc-patch-config.yml或config.yml")
 
                 JarFile(Environment.JarFile!!.path).use { jar ->
-                    val configFileInZip = jar.getJarEntry("config.yml") ?: throw ConfigFileNotFoundException("config.yml")
+                    val configFileInZip = jar.getJarEntry("mc-patch-config.yml")
+                        ?: jar.getJarEntry("config.yml")
+                        ?: throw ConfigFileNotFoundException("mc-patch-config.yml")
                     jar.getInputStream(configFileInZip).use { content = it.readBytes().decodeToString() }
                 }
-            } else {
-                content = externalConfigFile.content
             }
 
             if(content.startsWith(":"))
@@ -251,7 +257,7 @@ class McPatchClient
                 throw InvalidConfigFileException()
             }
         } catch (e: JSONException) {
-            throw FailedToParsingException("配置文件config.yml", "yaml", e.message ?: "")
+            throw FailedToParsingException("配置文件mc-patch-config.yml或config.yml", "yaml", e.message ?: "")
         }
     }
 
