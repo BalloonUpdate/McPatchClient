@@ -14,6 +14,7 @@ import mcpatch.gui.ChangeLogs
 import mcpatch.gui.McPatchWindow
 import mcpatch.localization.LangNodes
 import mcpatch.localization.Localization
+import mcpatch.logging.FileHandler
 import mcpatch.logging.Log
 import mcpatch.server.MultipleServers
 import mcpatch.util.*
@@ -120,6 +121,16 @@ class WorkThread(
                             meta.oldFolders.forEach { Log.debug("old dirs:  $it") }
                             meta.newFiles.forEach { Log.debug("new files: $it") }
                             meta.newFolders.forEach { Log.debug("new dirs:  $it") }
+
+                            // 不能更新日志文件
+                            val logFile = (Log.handlers.firstOrNull { it is FileHandler } as FileHandler?)?.logFile
+                            var logFileUpdated = false
+                            logFileUpdated = logFileUpdated or meta.moveFiles.removeIf { (updateDir + it.from) == logFile || (updateDir + it.to) == logFile }
+                            logFileUpdated = logFileUpdated or meta.oldFiles.removeIf { (updateDir + it) == logFile }
+                            logFileUpdated = logFileUpdated or meta.newFiles.removeIf { (updateDir + it.path) == logFile }
+
+                            if (logFileUpdated)
+                                Log.warn("Do not try to update the logging file of McPatchClient!")
 
                             // 处理移动，删除和创建目录
                             meta.moveFiles.forEach {

@@ -165,6 +165,12 @@ class File2 : Iterable<File2>
         }
     }
 
+    override fun equals(other: Any?): Boolean {
+        if (other !is File2)
+            return false
+        return file == other.file
+    }
+
     override fun iterator(): Iterator<File2>
     {
         return files.iterator()
