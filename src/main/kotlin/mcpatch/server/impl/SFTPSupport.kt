@@ -44,12 +44,12 @@ class SFTPSupport(serverString: String, val options: GlobalOptions)
         port = gourps[4].toInt()
         basepath = if (gourps.size >= 6) gourps[5] else ""
 
-        Log.info("host: $host")
-        Log.info("port: $port")
-        Log.info("fingerprint: $fingerprint")
-        Log.info("username: $username")
-        Log.info("password: $password")
-        Log.info("basepath: $basepath")
+//        Log.info("host: $host")
+//        Log.info("port: $port")
+//        Log.info("fingerprint: $fingerprint")
+//        Log.info("username: $username")
+//        Log.info("password: $password")
+//        Log.info("basepath: $basepath")
 
 //        ssh.loadKnownHosts()
         ssh.addHostKeyVerifier(fingerprint)

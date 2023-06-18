@@ -42,12 +42,12 @@ class WebdavSupport(serverString: String, val options: GlobalOptions)
         port = gourps[4].toInt()
         basepath = if (gourps.size >= 6) gourps[5] else ""
 
-        Log.info("scheme: $scheme")
-        Log.info("host: $host")
-        Log.info("port: $port")
-        Log.info("username: $username")
-        Log.info("password: $password")
-        Log.info("basepath: $basepath")
+//        Log.info("scheme: $scheme")
+//        Log.info("host: $host")
+//        Log.info("port: $port")
+//        Log.info("username: $username")
+//        Log.info("password: $password")
+//        Log.info("basepath: $basepath")
 
         webdav = McPatchSardineImpl(username, password, options)
         webdav.enableCompression()
