@@ -77,6 +77,11 @@ class ChangeLogs
         closeButton.addActionListener { close() }
 
         threadLock.start()
+
+        Thread {
+            Thread.sleep(1000)
+            this.window.repaint()
+        }.start()
     }
 
     fun setAutoClose(time: Int)
