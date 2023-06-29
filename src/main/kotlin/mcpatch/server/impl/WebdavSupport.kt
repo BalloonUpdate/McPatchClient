@@ -70,9 +70,9 @@ class WebdavSupport(serverString: String, val options: GlobalOptions)
                 } catch (e: HttpHostConnectException) {
                     throw WebdavConnectException(e, url)
                 } catch (e: McPatchSardineImpl.GetException) {
-                    throw HttpResponseStatusCodeException(e.ex.statusCode, url, e.body)
+                    throw HttpResponseStatusCodeException(e.ex.statusCode, 200..300, url, e.body)
                 } catch (e: SardineException) {
-                    throw HttpResponseStatusCodeException(e.statusCode, url, "")
+                    throw HttpResponseStatusCodeException(e.statusCode, 200..300, url, "")
                 } catch (e: SSLPeerUnverifiedException) {
                     throw SslCertificateUnverifiedException(url, e.toString())
                 } catch (e: SocketException) {
@@ -114,9 +114,9 @@ class WebdavSupport(serverString: String, val options: GlobalOptions)
             } catch (e: HttpHostConnectException) {
                 throw WebdavConnectException(e, url)
             } catch (e: McPatchSardineImpl.GetException) {
-                throw HttpResponseStatusCodeException(e.ex.statusCode, url, e.body)
+                throw HttpResponseStatusCodeException(e.ex.statusCode, 200..300, url, e.body)
             } catch (e: SardineException) {
-                throw HttpResponseStatusCodeException(e.statusCode, url, "")
+                throw HttpResponseStatusCodeException(e.statusCode, 200..300, url, "")
             } catch (e: SSLPeerUnverifiedException) {
                 throw SslCertificateUnverifiedException(url, e.toString())
             } catch (e: SocketException) {

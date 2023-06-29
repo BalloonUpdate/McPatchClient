@@ -68,18 +68,18 @@ abstract class AbstractServerSource : AutoCloseable
     protected class ReduceReportingFrequency
     {
         var lastReport = System.currentTimeMillis()
-        var accumulation = 0L
+        var accumulated = 0L
 
         fun feed(bytes: Int): Long
         {
-            accumulation += bytes
+            accumulated += bytes
 
             val now = System.currentTimeMillis()
             if (now - lastReport > 200)
             {
                 lastReport = now
-                val value = accumulation
-                accumulation = 0
+                val value = accumulated
+                accumulated = 0
                 return value
             }
 
