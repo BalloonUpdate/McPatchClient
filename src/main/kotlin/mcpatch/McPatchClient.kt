@@ -56,7 +56,7 @@ class McPatchClient
             val consoleLogLevel = if (Environment.IsProduction)
                     (if (graphicsMode || !enableLogFile) Log.LogLevel.DEBUG else Log.LogLevel.INFO)
                 else
-                    Log.LogLevel.INFO
+                    Log.LogLevel.DEBUG
             Log.addHandler(ConsoleHandler(Log, consoleLogLevel))
             if (!hasStandaloneProgress)
                 Log.openTag("McPatchClient")
