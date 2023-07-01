@@ -89,7 +89,12 @@ data class GlobalOptions(
     /**
      * 多线程下载时每个文件块的大小
      */
-    val concurrentBlockSize: Int
+    val concurrentBlockSize: Int,
+
+    /**
+     * 服务端上的版本号的文件名，用于支持灰度更新
+     */
+    val versionsFileName: String,
 ) {
     companion object {
         /**
@@ -120,6 +125,7 @@ data class GlobalOptions(
                 autoCloseChangelogs = getOption(map, "changelogs-auto-close") ?: 0,
                 concurrentThreads = getOption(map, "concurrent-threads") ?: 4,
                 concurrentBlockSize = getOption(map, "concurrent-block-size") ?: 4194304,
+                versionsFileName = getOption(map, "server-versions-file-name") ?: "versions.txt",
             )
         }
 

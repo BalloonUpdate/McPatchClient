@@ -109,6 +109,9 @@ auto-restart-version: true
 # 起始目录为程序Jar文件所在目录
 version-file: mc-patch-version.txt
 
+# 自定义版本号文件名，此功能用于支持灰度更新
+server-versions-file-name: versions.txt
+
 # 自定义Http协议头，仅对Http源和Webdav源生效
 # 某些自定义头不会生效，例如 Content-Length 和 Content-Encoding 等等
 http-headers:

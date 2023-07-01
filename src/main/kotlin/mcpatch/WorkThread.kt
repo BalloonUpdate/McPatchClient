@@ -42,7 +42,7 @@ class WorkThread(
             val currentVersionFile = progDir + options.verionFile
             val (versionFileContent, encoded) = if (currentVersionFile.exists) tryDecodeVersionFile(currentVersionFile.content) else Pair("", false)
 
-            val allVersions = servers.fetchText("versions.txt").split("\n").filter { it.isNotEmpty() }
+            val allVersions = servers.fetchText(options.versionsFileName).split("\n").filter { it.isNotEmpty() }
             val newestVersion = allVersions.lastOrNull()
             val currentVersion = if (currentVersionFile.exists) versionFileContent else null
             val downloadedVersions = mutableListOf<String>()
