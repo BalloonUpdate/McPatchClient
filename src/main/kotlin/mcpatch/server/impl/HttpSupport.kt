@@ -235,8 +235,6 @@ class HttpSupport(serverString: String, val options: GlobalOptions)
 
                                 downloadedBlocks[blockindex] = buf
                             }
-
-                            return@execute
                         }
                     }
                 } catch (e: Exception) {
