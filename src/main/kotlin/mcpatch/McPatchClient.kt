@@ -133,7 +133,7 @@ class McPatchClient
                         val errMessage = MiscUtils.stringBreak(className + (ex!!.message ?: "<No Exception Message>"), 80)
                         val title = "发生错误 $appVersion"
                         var content = errMessage + "\n"
-                        content += if (!hasStandaloneProgress) "点击\"是\"显示错误详情并崩溃Minecraft，" else "点击\"是\"显示错误详情并退出，"
+                        content += if (!hasStandaloneProgress) "点击\"是\"显示错误详情并停止启动Minecraft，" else "点击\"是\"显示错误详情并退出，"
                         content += if (!hasStandaloneProgress) "点击\"否\"继续启动Minecraft" else "点击\"否\"直接退出程序"
                         val choice = DialogUtils.confirm(title, content)
 
