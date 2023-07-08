@@ -4,6 +4,7 @@ import com.lee.bsdiff.BsPatch
 import mcpatch.core.PatchFileReader
 import mcpatch.data.GlobalOptions
 import mcpatch.data.ModificationMode
+import mcpatch.exception.DoNotHideFileException
 import mcpatch.exception.InvalidVersionException
 import mcpatch.exception.InvalidVersionNameException
 import mcpatch.exception.PatchCorruptedException
@@ -19,6 +20,7 @@ import mcpatch.logging.Log
 import mcpatch.server.MultipleServers
 import mcpatch.util.*
 import java.io.File
+import java.io.FileNotFoundException
 import java.util.*
 import javax.swing.JOptionPane
 
@@ -249,7 +251,11 @@ class WorkThread(
                             window?.labelText = "正在更新版本号"
 
                             // 更新版本号
-                            currentVersionFile.content = tryEncodeVersionFile(version, encoded)
+                            try {
+                                currentVersionFile.content = tryEncodeVersionFile(version, encoded)
+                            } catch (e: FileNotFoundException) {
+                                throw DoNotHideFileException(currentVersionFile)
+                            }
 
                             window?.labelText = "正在做最后的清理工作"
 
