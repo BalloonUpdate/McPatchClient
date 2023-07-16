@@ -1,7 +1,10 @@
 package mcpatch.server.impl
 
 import mcpatch.data.GlobalOptions
-import mcpatch.exception.*
+import mcpatch.exception.ConnectionInterruptedException
+import mcpatch.exception.ConnectionRejectedException
+import mcpatch.exception.ConnectionTimeoutException
+import mcpatch.exception.HttpResponseStatusCodeException
 import mcpatch.extension.FileExtension.bufferedOutputStream
 import mcpatch.logging.Log
 import mcpatch.server.AbstractServerSource
@@ -9,10 +12,9 @@ import mcpatch.server.OnDownload
 import mcpatch.stream.ExposedByteArrayOutputStream
 import mcpatch.util.File2
 import mcpatch.util.MiscUtils
+import mcpatch.webdav.CreateIgnoreVerifySsl
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.internal.headersContentLength
-import java.io.ByteArrayOutputStream
 import java.io.InterruptedIOException
 import java.io.RandomAccessFile
 import java.net.ConnectException
@@ -31,7 +33,10 @@ class HttpSupport(serverString: String, val options: GlobalOptions)
         .run { if (!endsWith("/")) "$this/" else this }
         .run { substring(0, lastIndexOf("/") + 1) }
 
+    val ssl = CreateIgnoreVerifySsl()
+
     val okClient = OkHttpClient.Builder()
+        .sslSocketFactory(ssl.first.socketFactory, ssl.second)
         .connectTimeout(options.httpConnectTimeout.toLong(), TimeUnit.MILLISECONDS)
         .readTimeout(options.httpResponseTimeout.toLong(), TimeUnit.MILLISECONDS)
         .writeTimeout(options.httpResponseTimeout.toLong(), TimeUnit.MILLISECONDS)

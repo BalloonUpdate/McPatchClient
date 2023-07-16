@@ -18,10 +18,10 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
-fun CreateIgnoreVerifySsl(): SSLContext {
+fun CreateIgnoreVerifySsl(): Pair<SSLContext, X509TrustManager> {
     val context = SSLContext.getInstance("TLS")
 
-    context.init(null, arrayOf<TrustManager>(object : X509TrustManager {
+    val trustManager = object : X509TrustManager {
         override fun checkClientTrusted(
             paramArrayOfX509Certificate: Array<X509Certificate?>?,
             paramString: String?
@@ -33,11 +33,13 @@ fun CreateIgnoreVerifySsl(): SSLContext {
         ) {}
 
         override fun getAcceptedIssuers(): Array<X509Certificate?>? {
-            return null
+            return arrayOf()
         }
-    }), null)
+    }
 
-    return context
+    context.init(null, arrayOf<TrustManager>(trustManager), null)
+
+    return Pair(context, trustManager)
 }
 
 class McPatchSardineImpl(username: String, password: String, val options: GlobalOptions)
@@ -52,7 +54,7 @@ class McPatchSardineImpl(username: String, password: String, val options: Global
             .setDefaultRequestConfig(RequestConfig.custom()
                 .setConnectTimeout(options.httpConnectTimeout)
                 .build())
-            .setSSLContext(CreateIgnoreVerifySsl())
+            .setSSLContext(CreateIgnoreVerifySsl().first)
         , username, password
     )
 {

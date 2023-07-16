@@ -95,6 +95,11 @@ data class GlobalOptions(
      * 服务端上的版本号的文件名，用于支持灰度更新
      */
     val versionsFileName: String,
+
+    /**
+     * 是否忽略HTTPS源的SSL证书验证
+     */
+    val ignoreHttpsCertificate: Boolean
 ) {
     companion object {
         /**
@@ -126,6 +131,7 @@ data class GlobalOptions(
                 concurrentThreads = getOption(map, "concurrent-threads") ?: 4,
                 concurrentBlockSize = getOption(map, "concurrent-block-size") ?: 4194304,
                 versionsFileName = getOption(map, "server-versions-file-name") ?: "versions.txt",
+                ignoreHttpsCertificate = getOption(map, "ignore-https-certificate") ?: true
             )
         }
 

@@ -117,6 +117,9 @@ server-versions-file-name: versions.txt
 http-headers:
 #  User-Agent: This filled by youself # 这是一个自定义UserAgent的配置示例
 
+# 是否忽略HTTPS更新源的SSL证书验证
+ignore-https-certificate: false
+
 # 此选项用来指定“更新起始目录”，也就是把文件都更新到哪里去。（此目录会从工作目录开始计算）
 # 默认情况下，程序会智能搜索.minecraft目录的父目录作为更新起始目录，因此通常不需要手动调整此选项
 # 若你要手动指定一个“更新起始目录”，请参考下面的示例
