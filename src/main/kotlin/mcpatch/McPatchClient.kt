@@ -25,6 +25,7 @@ import java.lang.instrument.Instrumentation
 import java.nio.channels.ClosedByInterruptException
 import java.util.*
 import java.util.jar.JarFile
+import kotlin.system.exitProcess
 
 class McPatchClient
 {
@@ -192,6 +193,9 @@ class McPatchClient
                 if (hasStandaloneProgress && !thread.isDaemon)
                     thread.interrupt()
             }
+
+            if (hasStandaloneProgress)
+                exitProcess(0)
         }
 
         return false
