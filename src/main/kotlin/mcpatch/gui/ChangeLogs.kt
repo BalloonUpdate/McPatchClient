@@ -76,17 +76,19 @@ class ChangeLogs
         changlogs.lineWrap = true
         closeButton.addActionListener { close() }
 
+        threadLock.isDaemon = true
         threadLock.start()
 
         Thread {
             Thread.sleep(1000)
             this.window.repaint()
-        }.start()
+        }.also { it.isDaemon = true }.start()
     }
 
     fun setAutoClose(time: Int)
     {
         autoCloseDelay = time
+        autoCloseThread.isDaemon = true
         autoCloseThread.start()
     }
 

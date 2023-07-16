@@ -88,9 +88,6 @@ class McPatchClient
 
             // 将更新任务单独分进一个线程执行，方便随时打断线程
             var ex: Throwable? = null
-            val workthread = WorkThread(window, options, updateDir, progDir)
-            workthread.isDaemon = true
-            workthread.setUncaughtExceptionHandler { _, e -> ex = e }
 
             if (!options.quietMode)
                 window?.show()
@@ -98,14 +95,14 @@ class McPatchClient
             window?.titleTextSuffix = ""
             window?.titleText = Localization[LangNodes.window_title]
             window?.labelText = Localization[LangNodes.connecting_message]
-            window?.onWindowClosing?.once { win ->
-                win.hide()
-                if (workthread.isAlive)
-                    workthread.interrupt()
-            }
 
-            workthread.start()
-            workthread.join()
+            val workthread = WorkThread(window, options, updateDir, progDir)
+
+            try {
+                workthread.run()
+            } catch (e: Exception) {
+                ex = e
+            }
 
             window?.destroy()
 
@@ -118,8 +115,8 @@ class McPatchClient
                     ex !is ClosedByInterruptException)
                 {
                     try {
-                        Log.error(ex!!.javaClass.name)
-                        Log.error(ex!!.stackTraceToString())
+                        Log.error(ex.javaClass.name)
+                        Log.error(ex.stackTraceToString())
                     } catch (e: Exception) {
                         println("------------------------")
                         println(e.javaClass.name)
@@ -129,8 +126,8 @@ class McPatchClient
                     if (graphicsMode)
                     {
                         val appVersion = "${Environment.Version} (${Environment.GitCommit})"
-                        val className = if (ex!! !is BaseException) ex!!.javaClass.name + "\n" else ""
-                        val errMessage = MiscUtils.stringBreak(className + (ex!!.message ?: "<No Exception Message>"), 80)
+                        val className = if (ex !is BaseException) ex.javaClass.name + "\n" else ""
+                        val errMessage = MiscUtils.stringBreak(className + (ex.message ?: "<No Exception Message>"), 80)
                         val title = "发生错误 $appVersion"
                         var content = errMessage + "\n"
                         content += if (!hasStandaloneProgress) "点击\"是\"显示错误详情并停止启动Minecraft，" else "点击\"是\"显示错误详情并退出，"
@@ -141,19 +138,19 @@ class McPatchClient
                         {
                             if (choice)
                             {
-                                DialogUtils.error("错误详情 $appVersion", ex!!.stackTraceToString())
-                                throw ex!!
+                                DialogUtils.error("错误详情 $appVersion", ex.stackTraceToString())
+                                throw ex
                             }
                         } else {
                             if (choice)
-                                DialogUtils.error("错误详情 $appVersion", ex!!.stackTraceToString())
-                            throw ex!!
+                                DialogUtils.error("错误详情 $appVersion", ex.stackTraceToString())
+                            throw ex
                         }
                     } else {
                         if (options.noThrowing)
                             println("文件更新失败！但因为设置了no-throwing参数，游戏仍会继续运行！\n\n\n")
                         else
-                            throw ex!!
+                            throw ex
                     }
                 } else {
                     Log.info("updating thread interrupted by user")
@@ -183,6 +180,18 @@ class McPatchClient
                 throw e
         } finally {
             Log.info("RAM: " + MiscUtils.convertBytes(Runtime.getRuntime().usedMemory()))
+
+//            打印调用堆栈
+            for ((thread, frames) in Thread.getAllStackTraces()) {
+                Log.info("Thread #${thread.id}: ${thread.name}: (daemon: ${thread.isDaemon})")
+                for (frame in frames) {
+                    Log.info("    $frame")
+                }
+                Log.info("")
+
+                if (hasStandaloneProgress && !thread.isDaemon)
+                    thread.interrupt()
+            }
         }
 
         return false

@@ -131,7 +131,7 @@ data class GlobalOptions(
                 concurrentThreads = getOption(map, "concurrent-threads") ?: 4,
                 concurrentBlockSize = getOption(map, "concurrent-block-size") ?: 4194304,
                 versionsFileName = getOption(map, "server-versions-file-name") ?: "versions.txt",
-                ignoreHttpsCertificate = getOption(map, "ignore-https-certificate") ?: true
+                ignoreHttpsCertificate = getOption(map, "ignore-https-certificate") ?: false
             )
         }
 
