@@ -151,7 +151,7 @@ class HttpSupport(serverString: String, val options: GlobalOptions)
                 throw HttpResponseStatusCodeException(r.code, 200..300, link, r.body?.string()?.limitLength())
 
             val body = r.body!!
-            val bodyLen = if (body.contentLength() != -1L) body.contentLength() else 1024 * 1024 * 1024
+            val bodyLen = if (body.contentLength() != -1L) body.contentLength() else options.httpFallbackFileSize
             val bufferSize = MiscUtils.chooseBufferSize(bodyLen)
 
             body.source().use { input ->

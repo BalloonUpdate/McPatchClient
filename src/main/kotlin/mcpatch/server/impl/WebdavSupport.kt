@@ -92,7 +92,7 @@ class WebdavSupport(serverString: String, val options: GlobalOptions)
         return withRetrying(retryTimes, 1000) {
             try {
                 webdav.getAlt(url).first.use { remote ->
-                    val bodyLen = if (remote.length >= 0) remote.length else 1024 * 1024 * 1024
+                    val bodyLen = if (remote.length >= 0) remote.length else options.httpFallbackFileSize
 
                     writeTo.file.bufferedOutputStream(1024 * 1024).use { output ->
                         var bytesReceived: Long = 0

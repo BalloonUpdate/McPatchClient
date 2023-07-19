@@ -99,7 +99,12 @@ data class GlobalOptions(
     /**
      * 是否忽略HTTPS源的SSL证书验证
      */
-    val ignoreHttpsCertificate: Boolean
+    val ignoreHttpsCertificate: Boolean,
+
+    /**
+     * HTTP/WEBDAV 源的默认文件大小，当服务器未报告文件大小时则假定文件为这个大小
+     */
+    val httpFallbackFileSize: Long,
 ) {
     companion object {
         /**
@@ -131,7 +136,8 @@ data class GlobalOptions(
                 concurrentThreads = getOption(map, "concurrent-threads") ?: 4,
                 concurrentBlockSize = getOption(map, "concurrent-block-size") ?: 4194304,
                 versionsFileName = getOption(map, "server-versions-file-name") ?: "versions.txt",
-                ignoreHttpsCertificate = getOption(map, "ignore-https-certificate") ?: false
+                ignoreHttpsCertificate = getOption(map, "ignore-https-certificate") ?: false,
+                httpFallbackFileSize = getOption(map, "http-fallback-file-size") ?: (1024L * 1024L * 1024L),
             )
         }
 

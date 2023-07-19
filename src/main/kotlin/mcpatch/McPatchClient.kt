@@ -184,11 +184,14 @@ class McPatchClient
 
 //            打印调用堆栈
             for ((thread, frames) in Thread.getAllStackTraces()) {
-                Log.info("Thread #${thread.id}: ${thread.name}: (daemon: ${thread.isDaemon})")
-                for (frame in frames) {
-                    Log.info("    $frame")
+                if (Environment.IsProduction)
+                {
+                    Log.info("Thread #${thread.id}: ${thread.name}: (daemon: ${thread.isDaemon})")
+                    for (frame in frames) {
+                        Log.info("    $frame")
+                    }
+                    Log.info("")
                 }
-                Log.info("")
 
                 if (hasStandaloneProgress && !thread.isDaemon)
                     thread.interrupt()
