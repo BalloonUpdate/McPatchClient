@@ -24,7 +24,7 @@ class SpeedSampler(val samplingPeriod: Int)
     {
         val now = getNow()
 
-        val first = samplingFrames.lastOrNull()
+        val first = samplingFrames.firstOrNull()
         if (first != null && first.high32 == now)
         {
             samplingFrames[0] = first + bytes
