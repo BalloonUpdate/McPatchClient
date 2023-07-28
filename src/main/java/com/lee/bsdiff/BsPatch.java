@@ -5,7 +5,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * 本文件修改自Github SparkInLee 的开源项目 https://github.com/SparkInLee/jbsdiff
+ * this file is modified from https://github.com/SparkInLee/jbsdiff
  */
 
 public class BsPatch {
