@@ -7,13 +7,13 @@ import javax.swing.JFrame
 import javax.swing.JLabel
 import javax.swing.JProgressBar
 
-class McPatchWindow(width: Int = 300, height: Int = 120)
+class McPatchWindow(width: Int = 350, height: Int = 140)
 {
     var titleTextSuffix = ""
 
     private var window = JFrame()
-    private var label = JLabel("空标签空标签空标签空标签空标签空标签空标签空标签空标签").apply { setBounds(5, 10, 275, 20); horizontalAlignment = JLabel.CENTER; window.contentPane.add(this) }
-    private var progressBar = JProgressBar(0, 1000).apply { setBounds(10, 40, 265, 30); isStringPainted = true; window.contentPane.add(this) }
+    private var label = JLabel("空标签空标签空标签空标签空标签空标签空标签空标签空标签").apply { setBounds(30, 15, 275, 20); horizontalAlignment = JLabel.CENTER; window.contentPane.add(this) }
+    private var progressBar = JProgressBar(0, 1000).apply { setBounds(35, 50, 265, 30); isStringPainted = true; window.contentPane.add(this) }
 
     val onWindowClosing = Event<McPatchWindow>()
 
