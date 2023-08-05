@@ -115,7 +115,7 @@ class WorkThread(
                                     Log.warn("skiped the new file $relativePath, because it is not allowed to update the McPatchClient execuable file itself")
                             }
 
-                            window?.labelText = "正在应用更新包 $version"
+                            window?.labelText = "正在解压更新包 $version"
 
                             // 输出日志
                             meta.moveFiles.forEach { Log.debug("move files: ${it.from} => ${it.to}") }
