@@ -15,7 +15,7 @@ class McPatchWindow(width: Int = 300, height: Int = 120)
     private var label = JLabel("空标签空标签空标签空标签空标签空标签空标签空标签空标签").apply { setBounds(5, 10, 275, 20); horizontalAlignment = JLabel.CENTER; window.contentPane.add(this) }
     private var progressBar = JProgressBar(0, 1000).apply { setBounds(10, 40, 265, 30); isStringPainted = true; window.contentPane.add(this) }
 
-//    val onWindowClosing = Event<McPatchWindow>()
+    val onWindowClosing = Event<McPatchWindow>()
 
     init {
         window.isUndecorated = false
@@ -27,11 +27,11 @@ class McPatchWindow(width: Int = 300, height: Int = 120)
         window.isResizable = false
 //        window.isAlwaysOnTop = true
 
-//        window.addWindowListener(object : WindowAdapter() {
-//            override fun windowClosing(e: WindowEvent?) {
-//                onWindowClosing.invoke(this@McPatchWindow)
-//            }
-//        })
+        window.addWindowListener(object : WindowAdapter() {
+            override fun windowClosing(e: WindowEvent?) {
+                onWindowClosing.invoke(this@McPatchWindow)
+            }
+        })
     }
 
     /**

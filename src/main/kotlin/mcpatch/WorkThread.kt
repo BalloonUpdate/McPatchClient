@@ -29,13 +29,13 @@ class WorkThread(
     val options: GlobalOptions,
     val updateDir: File2,
     val progDir: File2,
-) {
+) : Thread() {
     var downloadedVersionCount = 0
 
     /**
      * McPatch工作线程
      */
-    fun run()
+    override fun run()
     {
         if (!options.quietMode)
             window?.show()

@@ -87,31 +87,40 @@ class McPatchClient
             // 初始化UI
             val window = if (graphicsMode) McPatchWindow() else null
 
-            // 将更新任务单独分进一个线程执行，方便随时打断线程
-            var ex: Throwable? = null
-
+            // 弹出窗口
             if (!options.quietMode)
                 window?.show()
 
+            // 初始化窗口
             window?.titleTextSuffix = ""
             window?.titleText = Localization[LangNodes.window_title]
             window?.labelText = Localization[LangNodes.connecting_message]
 
+            // 将更新任务单独放进单独线程执行，方便随时打断线程
             val workthread = WorkThread(window, options, updateDir, progDir)
+            var exception: Throwable? = null
+            workthread.isDaemon = true
+            workthread.setUncaughtExceptionHandler { _, e -> exception = e }
 
-            try {
-                workthread.run()
-            } catch (e: Exception) {
-                ex = e
+            // 点击窗口的叉时停止更新任务
+            window?.onWindowClosing?.once { _ ->
+                if (workthread.isAlive)
+                    workthread.interrupt()
             }
 
+            // 启动更新任务
+            workthread.start()
+            workthread.join()
+
+            // 退出窗口
             window?.destroy()
 
             // 处理工作线程里的异常
-            if (ex != null)
+            if (exception != null)
             {
-                if (//            ex !is SecurityException &&
-                    ex !is InterruptedException &&
+                val ex = exception!!
+
+                if (ex !is InterruptedException &&
                     ex !is InterruptedIOException &&
                     ex !is ClosedByInterruptException)
                 {
@@ -181,21 +190,6 @@ class McPatchClient
                 throw e
         } finally {
             Log.info("RAM: " + MiscUtils.convertBytes(Runtime.getRuntime().usedMemory()))
-
-//            打印调用堆栈
-            for ((thread, frames) in Thread.getAllStackTraces()) {
-                if (Environment.IsProduction)
-                {
-                    Log.info("Thread #${thread.id}: ${thread.name}: (daemon: ${thread.isDaemon})")
-                    for (frame in frames) {
-                        Log.info("    $frame")
-                    }
-                    Log.info("")
-                }
-
-                if (hasStandaloneProgress && !thread.isDaemon)
-                    thread.interrupt()
-            }
 
             if (hasStandaloneProgress)
                 exitProcess(0)
