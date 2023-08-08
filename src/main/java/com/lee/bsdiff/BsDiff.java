@@ -1,5 +1,7 @@
 package com.lee.bsdiff;
 
+import mcpatch.extension.StreamExtension;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -12,8 +14,10 @@ public class BsDiff {
 	public long bsdiff(InputStream oldFile, InputStream newFile, OutputStream patchFile, int oldDataLength, int newDataLength) throws IOException {
 		byte[] oldData = new byte[oldDataLength];
 		byte[] newData = new byte[newDataLength];
-		oldFile.read(oldData);
-		newFile.read(newData);
+//		oldFile.read(oldData);
+		StreamExtension.INSTANCE.actuallyRead(oldFile, oldData, 0, oldDataLength);
+//		newFile.read(newData);
+		StreamExtension.INSTANCE.actuallyRead(newFile, newData, 0, newDataLength);
 
 		SuffixArray suffixArray = new SuffixArray(oldData);
 
