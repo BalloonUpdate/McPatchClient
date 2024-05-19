@@ -2,9 +2,12 @@ package com.github.kasuminova.GUI;
 
 import com.formdev.flatlaf.intellijthemes.materialthemeuilite.FlatAtomOneDarkContrastIJTheme;
 import mcpatch.logging.Log;
+import mcpatch.util.Environment;
 
 import javax.swing.*;
 import java.awt.*;
+import java.io.IOException;
+import java.util.jar.JarFile;
 
 /**
  * @author Kasumi_Nova
@@ -12,6 +15,17 @@ import java.awt.*;
  */
 public class SetupSwing {
     public static void init() {
+        if (Environment.getIsProduction())
+        {
+            try (JarFile jar = new JarFile(Environment.getJarFile().getPath())) {
+
+                if (jar.getJarEntry(".disable-theme") != null)
+                    return;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
         // antialias
         System.setProperty("awt.useSystemAAFontSettings", "lcd");
         System.setProperty("swing.aatext", "true");
